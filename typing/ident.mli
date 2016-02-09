@@ -15,13 +15,14 @@
 
 (* Identifiers (unique names) *)
 
-type t = { stamp: int; name: string; mutable flags: int }
+type t
 
 val create: string -> t
 val create_persistent: string -> t
 val create_predef_exn: string -> t
 val rename: t -> t
 val name: t -> string
+val with_name: t -> string -> t
 val unique_name: t -> string
 val unique_toplevel_name: t -> string
 val persistent: t -> bool
@@ -46,6 +47,7 @@ val compare : t -> t -> int
 (* Compare identifiers by binding location *)
 
 val make_global: t -> unit
+val reset_flag: t -> unit
 val global: t -> bool
 val is_predef_exn: t -> bool
 
