@@ -17,9 +17,9 @@
 
 type t
 
-val create: string -> t
-val create_persistent: string -> t
-val create_predef_exn: string -> t
+val create: ?side:Eliom_side.shside -> string -> t
+val create_persistent: ?side:Eliom_side.shside -> string -> t
+val create_predef_exn: ?side:Eliom_side.shside -> string -> t
 val rename: t -> t
 val name: t -> string
 val with_name: t -> string -> t
@@ -71,6 +71,7 @@ val fold_name: (t -> 'a -> 'b -> 'b) -> 'a tbl -> 'b -> 'b
 val fold_all: (t -> 'a -> 'b -> 'b) -> 'a tbl -> 'b -> 'b
 val iter: (t -> 'a -> unit) -> 'a tbl -> unit
 
+val find_side : string -> Eliom_side.side -> 'a tbl -> 'a
 
 (* Idents for sharing keys *)
 

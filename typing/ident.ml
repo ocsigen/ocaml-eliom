@@ -20,20 +20,40 @@ type t = { stamp: int; name: string; mutable flags: int }
 let global_flag = 1
 let predef_exn_flag = 2
 
+(* ELIOM *)
+let client_flag = 4
+let server_flag = 8
+
+let side i =
+  let s = (i.flags land server_flag) <> 0 in
+  let c = (i.flags land client_flag) <> 0 in
+  match s, c with
+  | false, false -> `Shared
+  | true , false -> `Server
+  | false, true  -> `Client
+  (* This case should probably raise an error *)
+  | true , true  -> `Shared
+
+let side_to_flag = function
+  | `Server -> server_flag
+  | `Client -> client_flag
+  | `Shared -> 0
+(* /ELIOM *)
+
 (* A stamp of 0 denotes a persistent identifier *)
 
 let currentstamp = ref 0
 
-let create s =
+let create ?(side=Eliom_side.get_side ()) s =
   incr currentstamp;
-  { name = s; stamp = !currentstamp; flags = 0 }
+  { name = s; stamp = !currentstamp; flags = side_to_flag side }
 
-let create_predef_exn s =
+let create_predef_exn ?(side=Eliom_side.get_side ()) s =
   incr currentstamp;
-  { name = s; stamp = !currentstamp; flags = predef_exn_flag }
+  { name = s; stamp = !currentstamp; flags = predef_exn_flag lor side_to_flag side}
 
-let create_persistent s =
-  { name = s; stamp = 0; flags = global_flag }
+let create_persistent ?(side=Eliom_side.get_side ()) s =
+  { name = s; stamp = 0; flags = global_flag lor side_to_flag side }
 
 let rename i =
   incr currentstamp;
@@ -156,6 +176,7 @@ let rec find_stamp s = function
   | Some k ->
       if k.ident.stamp = s then k.data else find_stamp s k.previous
 
+
 let rec find_same id = function
     Empty ->
       raise Not_found
@@ -168,15 +189,27 @@ let rec find_same id = function
       else
         find_same id (if c < 0 then l else r)
 
-let rec find_name name = function
+let rec find_name_side s = function
+    None ->
+      raise Not_found
+  | Some k ->
+      if Eliom_side.conform s (side k.ident)
+      then k.data
+      else find_name_side s k.previous
+
+let rec find_side name s = function
     Empty ->
       raise Not_found
   | Node(l, k, r, _) ->
       let c = compare name k.ident.name in
       if c = 0 then
-        k.data
+        if Eliom_side.conform s (side k.ident)
+        then k.data
+        else find_name_side s k.previous
       else
-        find_name name (if c < 0 then l else r)
+        find_side name s (if c < 0 then l else r)
+
+let find_name name = find_side name (Eliom_side.get_side ())
 
 let rec get_all = function
   | None -> []

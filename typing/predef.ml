@@ -22,7 +22,7 @@ open Btype
 let builtin_idents = ref []
 
 let wrap create s =
-  let id = create s in
+  let id = create ?side:None s in
   builtin_idents := (s, id) :: !builtin_idents;
   id
 
