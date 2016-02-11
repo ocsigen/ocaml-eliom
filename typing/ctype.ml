@@ -2280,6 +2280,10 @@ let rec unify (env:Env.t ref) t1 t2 =
   try
     type_changed := true;
     begin match (t1.desc, t2.desc) with
+    (* ELIOM
+       Test if unifying between a client and a server type, and do
+       something special there.
+    *)
       (Tvar _, Tconstr _) when deep_occur t1 t2 ->
         unify2 env t1 t2
     | (Tconstr _, Tvar _) when deep_occur t2 t1 ->

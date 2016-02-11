@@ -1709,6 +1709,9 @@ let rec type_approx env sexp =
         raise(Error(sexp.pexp_loc, env, Expr_type_clash trace))
       end;
       ty2
+  (* ELIOM TODO
+     Add approximation for fragment/injection
+  *)
   | _ -> newvar ()
 
 (* List labels in a function type, and whether return type is a variable *)

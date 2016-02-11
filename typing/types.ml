@@ -33,6 +33,8 @@ and type_desc =
   | Tfield of string * field_kind * type_expr * type_expr
   | Tnil
   | Tlink of type_expr
+  (* ELIOM *)
+  (* | TlinkClientServer of (type_expr * side) *)
   | Tsubst of type_expr         (* for copying *)
   | Tvariant of row_desc
   | Tunivar of string option
