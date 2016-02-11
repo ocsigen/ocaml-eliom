@@ -159,6 +159,12 @@ let iter_expression f e =
   let rec expr e =
     f e;
     match e.pexp_desc with
+    (*** ELIOM ***)
+    | _ when Eliom_side.is_fragment e ->
+        Eliom_side.in_side `Client @@ fun () ->
+        f @@ Eliom_side.get_fragment e
+    | _ when Eliom_side.is_injection e -> ()
+    (*** /ELIOM ***)
     | Pexp_extension _ (* we don't iterate under extension point *)
     | Pexp_ident _
     | Pexp_new _
@@ -216,6 +222,11 @@ let iter_expression f e =
 
   and structure_item str =
     match str.pstr_desc with
+    (* ELIOM *)
+    | _ when Eliom_side.is_section str ->
+        let side, str = Eliom_side.get_section str in
+        Eliom_side.in_side side @@ fun () -> structure_item str
+    (* /ELIOM *)
     | Pstr_eval (e, _) -> expr e
     | Pstr_value (_, pel) -> List.iter binding pel
     | Pstr_primitive _
