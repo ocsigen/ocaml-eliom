@@ -23,6 +23,28 @@ open Typedtree
 open Btype
 open Ctype
 
+(* ELIOM *)
+(* Utilities *)
+let mk_texp ~env ?(attrs=[]) ?(loc=Location.none) desc ty =
+  { exp_desc = desc; exp_type = ty;
+    exp_loc  = loc; exp_extra = [];
+    exp_attributes = attrs;
+    exp_env  = env }
+
+let texp_ident env name =
+  let lid     = Longident.parse name in
+  let (p, vd) = try Env.lookup_value lid env
+                with Not_found ->
+                  Misc.fatal_error ("Trx.find_value: " ^ name) in
+  mk_texp ~env (Texp_ident (p,mknoloc lid, vd))
+          (Ctype.instance env vd.val_type)
+
+let texp_apply : Typedtree.expression -> Typedtree.expression list ->
+ Typedtree.expression_desc = fun f args ->
+   Texp_apply(f, List.map (fun arg -> (Nolabel,Some arg)) args)
+
+(* /ELIOM *)
+
 type error =
     Polymorphic_label of Longident.t
   | Constructor_arity_mismatch of Longident.t * int * int
@@ -1920,6 +1942,27 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
     exp
   in
   match sexp.pexp_desc with
+  (* ELIOM *)
+  | _ when Eliom_side.is_fragment sexp ->
+      (* Follow Pexp_lazy *)
+      let e = Eliom_side.get_fragment sexp in
+      let ty = Eliom_side.in_side `Client @@ fun () -> newgenvar () in
+      let to_unify = Predef.type_fragment ty in
+      Eliom_side.in_side `Client @@ fun () ->
+      unify_exp_types loc env to_unify ty_expected;
+      let arg =
+        Eliom_side.in_side `Client @@ fun () ->
+        type_expect env e ty
+      in
+      let f = texp_ident env "Obj.magic" in
+      re {
+        exp_desc = texp_apply f [arg];
+        exp_loc = loc; exp_extra = [];
+        exp_type = instance env ty_expected;
+        exp_attributes = Eliom_side.fragment_attr loc :: sexp.pexp_attributes;
+        exp_env = env;
+      }
+  (* /ELIOM *)
   | Pexp_ident lid ->
       begin
         let (path, desc) = Typetexp.find_value env loc lid.txt in
