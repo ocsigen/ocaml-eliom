@@ -145,6 +145,11 @@ and ident_nil = ident_create "[]"
 and ident_cons = ident_create "::"
 and ident_none = ident_create "None"
 and ident_some = ident_create "Some"
+
+let ident_fragment = ident_create "fragment"
+let path_fragment = Pident ident_fragment
+let type_fragment t = newgenty (Tconstr(path_fragment, [t], ref Mnil))
+
 let common_initial_env add_type add_extension empty_env =
   let decl_bool =
     {decl_abstr with
@@ -184,6 +189,12 @@ let common_initial_env add_type add_extension empty_env =
      type_params = [tvar];
      type_arity = 1;
      type_variance = [Variance.covariant]}
+  and decl_fragment =
+    let tvar = newgenvar() in
+    {decl_abstr with
+     type_params = [tvar];
+     type_arity = 1;
+     type_variance = [Variance.covariant]}
   in
 
   let add_extension id l =
@@ -213,6 +224,7 @@ let common_initial_env add_type add_extension empty_env =
                          [newgenty (Ttuple[type_string; type_int; type_int])] (
   add_extension ident_undefined_recursive_module
                          [newgenty (Ttuple[type_string; type_int; type_int])] (
+  add_type ident_fragment decl_fragment (
   add_type ident_int64 decl_abstr (
   add_type ident_int32 decl_abstr (
   add_type ident_nativeint decl_abstr (
@@ -228,7 +240,7 @@ let common_initial_env add_type add_extension empty_env =
   add_type ident_char decl_abstr_imm (
   add_type ident_int decl_abstr_imm (
   add_type ident_extension_constructor decl_abstr (
-    empty_env)))))))))))))))))))))))))))
+    empty_env))))))))))))))))))))))))))))
 
 let build_initial_env add_type add_exception empty_env =
   let common = common_initial_env add_type add_exception empty_env in
