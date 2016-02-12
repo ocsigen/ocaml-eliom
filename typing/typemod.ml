@@ -1207,8 +1207,14 @@ let rec type_module ?(alias=false) sttn funct_body anchor env smod =
 and type_structure ?(toplevel = false) funct_body anchor env sstr scope =
   let names = new_names () in
 
-  let type_str_item env srem {pstr_loc = loc; pstr_desc = desc} =
+  let rec type_str_item env srem ({pstr_loc = loc; pstr_desc = desc} as stri) =
     match desc with
+    (* ELIOM *)
+    | _ when Eliom_side.is_section stri ->
+        let side, stri = Eliom_side.get_section stri in
+        Eliom_side.in_side side @@ fun () ->
+        type_str_item env srem stri
+    (* /ELIOM *)
     | Pstr_eval (sexpr, attrs) ->
         let expr =
           Builtin_attributes.with_warning_attribute attrs
