@@ -84,6 +84,7 @@ let get_fragment e = match e.pexp_desc with
 
 
 let injection_op = "~%"
+let injection_name = "eliom.injection"
 
 let is_injection e = match e.pexp_desc with
   | Pexp_apply ({pexp_desc = Pexp_ident {txt}}, args)
@@ -123,3 +124,5 @@ let get_section e = match e.pstr_desc with
 let fragment = Longident.parse "Eliom_runtime.fragment"
 
 let fragment_attr loc = ({Location.txt=fragment_name; loc},PStr [])
+
+let injection_attr loc = ({Location.txt=injection_name; loc},PStr [])

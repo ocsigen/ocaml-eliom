@@ -31,3 +31,4 @@ val get_section : Parsetree.structure_item -> (side * Parsetree.structure_item)
 
 val fragment : Longident.t
 val fragment_attr : Location.t -> Parsetree.attribute
+val injection_attr : Location.t -> Parsetree.attribute
