@@ -340,6 +340,12 @@ let rec transl_type env policy styp =
     ctyp (Ttyp_tuple ctys) ty
   | Ptyp_constr(lid, stl) ->
       let (path, decl) = find_type env styp.ptyp_loc lid.txt in
+      (* ELIOM *)
+      begin if Path.same path Predef.path_fragment
+        then Eliom_side.in_side `Client
+        else fun f -> f ()
+      end @@ fun () ->
+      (* /ELIOM *)
       let stl =
         match stl with
         | [ {ptyp_desc=Ptyp_any} as t ] when decl.type_arity > 1 ->
