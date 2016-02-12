@@ -17,8 +17,8 @@ let conform (s1:shside) (s2:shside) = match s1, s2 with
   | `Client, `Client
   | `Shared, `Shared
   | (`Server | `Client), `Shared
-  | `Shared, (`Server | `Client)
     -> true
+  | `Shared, (`Server | `Client)
   | `Client, `Server
   | `Server, `Client -> false
 
