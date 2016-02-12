@@ -1932,6 +1932,44 @@ let rec type_exp ?recarg env sexp =
   (* We now delegate everything to type_expect *)
   type_expect ?recarg env sexp (newvar ())
 
+(* ELIOM *)
+(* Invariant:
+   - We are client side.
+*)
+and type_injection env e ty_expected =
+  let loc = e.pexp_loc in
+
+  (* First, we try to unify [ty_injected] with [ty_expected fragment] *)
+  (* let snap = Btype.snapshot () in *)
+  let ty_injected = Eliom_side.in_side `Client @@ fun () -> newgenvar () in
+  let to_unify = Predef.type_fragment ty_expected in
+  begin
+    (* try *)
+      Eliom_side.in_side `Server ( fun () ->
+        unify_exp_types loc env ty_injected to_unify ;
+        type_expect env e ty_injected
+      )
+  (* with _ -> *)
+  (*   Btype.backtrack snap *)
+  end
+
+  (* let ty_injected = expand_head env ty_injected in *)
+  (* match ty_injected.desc, ty_expected.desc with *)
+  (* | Tlink ty, _ -> *)
+  (*     type_injection loc env ty ty_expected *)
+  (* | Tconstr(path, [ty], _), _ *)
+  (*   when Path.same path Predef.path_fragment -> *)
+  (*     unify_exp_types loc env ty ty_expected *)
+  (* | _ -> *)
+      (* raise @@ Error_forward ( *)
+      (*   Location.errorf ~loc *)
+      (*     "This expression has type %a. \ *)
+      (*      This type has no server translation, \ *)
+      (*      it cannot be used in an injection." *)
+      (*     Printtyp.type_expr ty_injected *)
+  (* ) *)
+(* /ELIOM *)
+
 (* Typing of an expression with an expected type.
    This provide better error messages, and allows controlled
    propagation of return type information.
@@ -1977,6 +2015,20 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
         exp_loc = loc; exp_extra = [];
         exp_type = instance env ty_expected;
         exp_attributes = Eliom_side.fragment_attr loc :: sexp.pexp_attributes;
+        exp_env = env;
+      }
+  | _ when Eliom_side.is_injection sexp ->
+      (* Check that we are indeed on the client. *)
+      Eliom_side.check ~loc (fun e -> Error_forward e)
+        `Client "Injections" ;
+      let e = Eliom_side.get_injection sexp in
+      let typ_exp = type_injection env e ty_expected in
+      let f = texp_ident env "Obj.magic" in
+      re {
+        exp_desc = texp_apply f [typ_exp] ;
+        exp_loc = loc; exp_extra = [];
+        exp_type = instance env ty_expected;
+        exp_attributes = Eliom_side.injection_attr loc :: sexp.pexp_attributes;
         exp_env = env;
       }
   (* /ELIOM *)
