@@ -21,8 +21,8 @@ open Btype
 
 let builtin_idents = ref []
 
-let wrap create s =
-  let id = create ?side:None s in
+let wrap create ?side s =
+  let id = create ?side s in
   builtin_idents := (s, id) :: !builtin_idents;
   id
 
@@ -146,9 +146,11 @@ and ident_cons = ident_create "::"
 and ident_none = ident_create "None"
 and ident_some = ident_create "Some"
 
-let ident_fragment = ident_create "fragment"
+(* ELIOM *)
+let ident_fragment = ident_create ~side:`Server "fragment"
 let path_fragment = Pident ident_fragment
 let type_fragment t = newgenty (Tconstr(path_fragment, [t], ref Mnil))
+(* /ELIOM *)
 
 let common_initial_env add_type add_extension empty_env =
   let decl_bool =
@@ -189,12 +191,14 @@ let common_initial_env add_type add_extension empty_env =
      type_params = [tvar];
      type_arity = 1;
      type_variance = [Variance.covariant]}
+  (* ELIOM *)
   and decl_fragment =
     let tvar = newgenvar() in
     {decl_abstr with
      type_params = [tvar];
      type_arity = 1;
      type_variance = [Variance.covariant]}
+    (* /ELIOM *)
   in
 
   let add_extension id l =
@@ -224,7 +228,7 @@ let common_initial_env add_type add_extension empty_env =
                          [newgenty (Ttuple[type_string; type_int; type_int])] (
   add_extension ident_undefined_recursive_module
                          [newgenty (Ttuple[type_string; type_int; type_int])] (
-  add_type ident_fragment decl_fragment (
+  (* ELIOM *) add_type ident_fragment decl_fragment (
   add_type ident_int64 decl_abstr (
   add_type ident_int32 decl_abstr (
   add_type ident_nativeint decl_abstr (
