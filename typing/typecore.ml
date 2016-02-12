@@ -1958,6 +1958,9 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
   match sexp.pexp_desc with
   (* ELIOM *)
   | _ when Eliom_side.is_fragment sexp ->
+      (* Check that we are indeed on the server. *)
+      Eliom_side.check ~loc (fun e -> Error_forward e)
+        `Server "Fragments" ;
       (* Follow Pexp_lazy *)
       let e = Eliom_side.get_fragment sexp in
       let ty = Eliom_side.in_side `Client @@ fun () -> newgenvar () in

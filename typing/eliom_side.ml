@@ -12,6 +12,11 @@ type shside = [
   | `Shared
 ]
 
+let to_string = function
+  | `Server -> "server"
+  | `Client -> "client"
+  | `Shared -> "shared"
+
 let conform (s1:shside) (s2:shside) = match s1, s2 with
   | `Server, `Server
   | `Client, `Client
@@ -36,6 +41,18 @@ let in_side new_side body =
    side := old_side; raise e
 
 let get_side () = (!side : shside :> [>shside])
+
+let check ~loc mk_error side message =
+  let current_side = get_side () in
+  if not @@ conform current_side side then
+    raise @@ mk_error @@
+    Location.errorf ~loc
+      "%s are only allowed in a %s context, \
+       but it is used in a %s context."
+      message
+      (to_string side)
+      (to_string current_side)
+  else ()
 
 (** Utils *)
 let exp_add_attr ~attrs e =

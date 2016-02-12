@@ -9,7 +9,12 @@ type shside = [
   | `Shared
 ]
 
+val to_string : [<shside] -> string
+
 val conform : shside -> shside -> bool
+val check :
+  loc:Location.t ->
+  (Location.error -> exn) -> shside -> string -> unit
 
 val in_side : [<shside] -> (unit -> 'a) -> 'a
 val get_side : unit -> [>shside]
