@@ -233,9 +233,9 @@ DUMPOBJ=opnames.cmo dumpobj.cmo
 
 dumpobj: $(DUMPOBJ)
 	$(CAMLC) $(LINKFLAGS) -o dumpobj \
-	         misc.cmo identifiable.cmo numbers.cmo \
-                 tbl.cmo config.cmo ident.cmo \
-	         opcodes.cmo bytesections.cmo $(DUMPOBJ)
+          ../compilerlibs/ocamlcommon.cma \
+          ../compilerlibs/ocamlbytecomp.cma \
+          $(DUMPOBJ)
 
 clean::
 	rm -f dumpobj
