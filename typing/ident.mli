@@ -71,7 +71,7 @@ val fold_name: (t -> 'a -> 'b -> 'b) -> 'a tbl -> 'b -> 'b
 val fold_all: (t -> 'a -> 'b -> 'b) -> 'a tbl -> 'b -> 'b
 val iter: (t -> 'a -> unit) -> 'a tbl -> unit
 
-val find_side : string -> Eliom_side.side -> 'a tbl -> 'a
+val find_side : string -> Eliom_side.shside -> 'a tbl -> 'a
 
 (* Idents for sharing keys *)
 

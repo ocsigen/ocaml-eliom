@@ -9,10 +9,10 @@ type shside = [
   | `Shared
 ]
 
-val conform : side -> shside -> bool
+val conform : shside -> shside -> bool
 
-val in_side : [<side] -> (unit -> 'a) -> 'a
-val get_side : unit -> [>side]
+val in_side : [<shside] -> (unit -> 'a) -> 'a
+val get_side : unit -> [>shside]
 
 val is_fragment : Parsetree.expression -> bool
 val get_fragment : Parsetree.expression -> Parsetree.expression

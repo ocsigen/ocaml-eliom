@@ -12,28 +12,30 @@ type shside = [
   | `Shared
 ]
 
-let conform (s1:side) (s2:shside) = match s1, s2 with
+let conform (s1:shside) (s2:shside) = match s1, s2 with
   | `Server, `Server
   | `Client, `Client
+  | `Shared, `Shared
   | (`Server | `Client), `Shared
+  | `Shared, (`Server | `Client)
     -> true
   | `Client, `Server
   | `Server, `Client -> false
 
 (** Handling of current side *)
 
-let side : side ref = ref `Server
+let side : shside ref = ref `Shared
 
 let in_side new_side body =
    let old_side = !side in
-   side := (new_side : [<side] :> side ) ;
+   side := (new_side : [<shside] :> shside ) ;
    try
     let r = body () in
     side := old_side; r
    with e ->
    side := old_side; raise e
 
-let get_side () = (!side : side :> [>side])
+let get_side () = (!side : shside :> [>shside])
 
 (** Utils *)
 let exp_add_attr ~attrs e =
