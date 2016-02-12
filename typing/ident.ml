@@ -38,6 +38,12 @@ let side_to_flag = function
   | `Server -> server_flag
   | `Client -> client_flag
   | `Shared -> 0
+
+let show_side i = match side i with
+  | `Client -> "c"
+  | `Server -> "s"
+  | `Shared -> ""
+
 (* /ELIOM *)
 
 (* A stamp of 0 denotes a persistent identifier *)
@@ -110,7 +116,7 @@ let print ppf i =
   match i.stamp with
   | 0 -> fprintf ppf "%s!" i.name
   | -1 -> fprintf ppf "%s#" i.name
-  | n -> fprintf ppf "%s/%i%s" i.name n (if global i then "g" else "")
+  | n -> fprintf ppf "%s/%i%s%s" i.name n (if global i then "g" else "") (show_side i)
 
 type 'a tbl =
     Empty
