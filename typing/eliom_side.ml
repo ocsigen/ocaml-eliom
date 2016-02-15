@@ -43,7 +43,11 @@ let in_side new_side body =
     let r = body () in
     side := old_side; r
    with e ->
-   side := old_side; raise e
+     (* side := old_side; *)
+     (* We leak the side on purpose, allow better error reporting.
+        In the type checker, exceptions seems not used for control flow
+        that could break around in_side *)
+     raise e
 
 let get_side () = (!side : shside :> [>shside])
 

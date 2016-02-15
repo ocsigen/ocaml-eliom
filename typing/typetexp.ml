@@ -773,19 +773,53 @@ let transl_type_scheme env styp =
 open Format
 open Printtyp
 
+(* ELIOM *)
+
+(* When doing spellchecking, we filter identifiers that are not on the
+   same side as the current scope.
+*)
+let filter_add side name path l = match path with
+  | Some path when Eliom_side.conform (Ident.side @@ Path.head path) side
+    -> name::l
+  | _ -> l
+
+exception Foo of Eliom_side.shside
+
+let check_injection ppf path fold env s =
+  let side = Eliom_side.get_side () in
+  let mside = Eliom_side.mirror side in
+  let aux name path acc = match path with
+    | Some path ->
+        let pside = Ident.side @@ Path.head path in
+        if Eliom_side.conform pside mside && name = s then raise (Foo pside)
+        else acc
+    | None -> acc
+  in
+  try ignore (fold aux path env [])
+  with Foo pside ->
+    Format.fprintf ppf
+      "@\nHint: The current scope is %s but this identifier is available in %s scope.@?"
+      (Eliom_side.to_string side)
+      (Eliom_side.to_string pside)
+
+(* /ELIOM *)
+
 let spellcheck ppf fold env lid =
+  let side = Eliom_side.get_side () in
   let choices ~path name =
-    let env = fold (fun x xs -> x::xs) path env [] in
+    let env = fold (filter_add side) path env [] in
     Misc.spellcheck env name in
   match lid with
     | Longident.Lapply _ -> ()
     | Longident.Lident s ->
-       Misc.did_you_mean ppf (fun () -> choices ~path:None s)
+       Misc.did_you_mean ppf (fun () -> choices ~path:None s) ;
+       check_injection ppf None fold env s
     | Longident.Ldot (r, s) ->
-       Misc.did_you_mean ppf (fun () -> choices ~path:(Some r) s)
+       Misc.did_you_mean ppf (fun () -> choices ~path:(Some r) s) ;
+       check_injection ppf (Some r) fold env s
 
-let fold_descr fold get_name f = fold (fun descr acc -> f (get_name descr) acc)
-let fold_simple fold4 f = fold4 (fun name _path _descr acc -> f name acc)
+let fold_descr fold get_name f = fold (fun descr acc -> f (get_name descr) None acc)
+let fold_simple fold4 f = fold4 (fun name path _descr acc -> f name (Some path) acc)
 
 let fold_values = fold_simple Env.fold_values
 let fold_types = fold_simple Env.fold_types
