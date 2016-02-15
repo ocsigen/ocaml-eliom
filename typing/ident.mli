@@ -78,3 +78,6 @@ val find_side : string -> Eliom_side.shside -> 'a tbl -> 'a
 val make_key_generator : unit -> (t -> t)
 
 include Identifiable.S with type t := t
+
+(* ELIOM *)
+val side : t -> [>Eliom_side.shside]
