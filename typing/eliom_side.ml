@@ -27,6 +27,11 @@ let conform (s1:shside) (s2:shside) = match s1, s2 with
   | `Client, `Server
   | `Server, `Client -> false
 
+let mirror = function
+  | `Client -> `Server
+  | `Server -> `Client
+  | `Shared -> `Shared
+
 (** Handling of current side *)
 
 let side : shside ref = ref `Shared
