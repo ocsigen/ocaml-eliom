@@ -1938,36 +1938,24 @@ let rec type_exp ?recarg env sexp =
 *)
 and type_injection env e ty_expected =
   let loc = e.pexp_loc in
-
-  (* First, we try to unify [ty_injected] with [ty_expected fragment] *)
-  (* let snap = Btype.snapshot () in *)
-  let ty_injected = Eliom_side.in_side `Client @@ fun () -> newgenvar () in
-  let to_unify = Predef.type_fragment ty_expected in
-  begin
-    (* try *)
-      Eliom_side.in_side `Server ( fun () ->
-        unify_exp_types loc env ty_injected to_unify ;
-        type_expect env e ty_injected
-      )
-  (* with _ -> *)
-  (*   Btype.backtrack snap *)
-  end
-
-  (* let ty_injected = expand_head env ty_injected in *)
-  (* match ty_injected.desc, ty_expected.desc with *)
-  (* | Tlink ty, _ -> *)
-  (*     type_injection loc env ty ty_expected *)
-  (* | Tconstr(path, [ty], _), _ *)
-  (*   when Path.same path Predef.path_fragment -> *)
-  (*     unify_exp_types loc env ty ty_expected *)
-  (* | _ -> *)
-      (* raise @@ Error_forward ( *)
-      (*   Location.errorf ~loc *)
-      (*     "This expression has type %a. \ *)
-      (*      This type has no server translation, \ *)
-      (*      it cannot be used in an injection." *)
-      (*     Printtyp.type_expr ty_injected *)
-  (* ) *)
+  let typ_exp =
+    Eliom_side.in_side `Server @@ fun () ->
+    type_exp env e
+  in
+  let ty_injected = expand_head env typ_exp.exp_type in
+  match ty_injected.desc with
+  | Tconstr(path, [ty], _)
+    when Path.same path Predef.path_fragment ->
+      unify_exp_types loc env ty ty_expected ;
+      typ_exp
+  | _ ->
+      raise @@ Error_forward (
+        Location.errorf ~loc
+          "This expression has type %a. \
+           This type has no server translation, \
+           it cannot be used in an injection."
+          Printtyp.type_expr ty_injected
+  )
 (* /ELIOM *)
 
 (* Typing of an expression with an expected type.
