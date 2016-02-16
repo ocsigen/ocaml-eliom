@@ -67,6 +67,9 @@ exception Error of error
 
 let error err = raise (Error err)
 
+(* On modifie le mécanisme de lookup dans get_components pour slicer le coté client
+   et serveur, puis on enregistre la pair dans Env Lazy *)
+
 module EnvLazy : sig
   type ('a,'b) t
 
