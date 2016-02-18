@@ -43,6 +43,64 @@ let texp_apply : Typedtree.expression -> Typedtree.expression list ->
  Typedtree.expression_desc = fun f args ->
    Texp_apply(f, List.map (fun arg -> (Nolabel,Some arg)) args)
 
+let rec longident_of_path = function
+  | Path.Pident id ->
+      Longident.Lident (Ident.name id)
+  | Path.Pdot (p,s,i) ->
+      Longident.Ldot (longident_of_path p, s)
+  | Path.Papply (p1,p2) ->
+      Longident.Lapply (longident_of_path p1, longident_of_path p2)
+
+exception No_translation of Path.t
+let rec translate_path env f p =
+  let lid = longident_of_path p in
+  let new_p, _ =
+    try f ?loc:None lid env
+    with Not_found -> raise (No_translation p)
+  in
+  new_p
+
+and translate_side_desc env = function
+  | Tconstr (p,args,_abbrev) ->
+      Tconstr
+        (translate_path env Env.lookup_type p,
+         List.map (translate_side_expr env) args,
+         ref Mnil)
+
+  (* Not sure *)
+  | Tvar x -> Tvar x
+  | Tunivar x -> Tunivar x
+
+  (* For all the following, we just copy. *)
+  | Tvariant _
+  | Tpoly (_,_)
+  | Ttuple _
+
+  (* Technically, those can't be serialized. *)
+  | Tarrow (_,_,_,_)
+  | Tobject (_,_)
+  | Tfield (_,_,_,_)
+  | Tnil
+  | Tpackage (_,_,_)
+
+  (* Shouldn't happen, but not important. *)
+  | Tlink _
+  | Tsubst _
+
+    as ty ->
+      copy_type_desc ~keep_names:true (translate_side_expr env) ty
+
+and translate_side_expr env { desc; level; id } =
+  { desc = translate_side_desc env desc ;
+    level ;
+    id ;
+  }
+
+let translate_side env side expr =
+  Eliom_side.in_side side @@ fun () ->
+  try `Ok (translate_side_expr env expr)
+  with No_translation p -> `Error p
+
 (* /ELIOM *)
 
 type error =
@@ -1943,19 +2001,38 @@ and type_injection env e ty_expected =
     type_exp env e
   in
   let ty_injected = expand_head env typ_exp.exp_type in
+
+  let errorf ty s =
+    Format.kasprintf
+      (fun s -> raise @@ Error_forward (Location.error ~loc s))
+      ("This expression has type %a.@ " ^^ s)
+      Printtyp.type_expr ty
+  in
+
   match ty_injected.desc with
   | Tconstr(path, [ty], _)
     when Path.same path Predef.path_fragment ->
       unify_exp_types loc env ty ty_expected ;
       typ_exp
   | _ ->
-      raise @@ Error_forward (
-        Location.errorf ~loc
-          "This expression has type %a. \
-           This type has no server translation, \
+      generalize ty_injected ;
+      if closed_schema env ty_injected then
+        match translate_side env `Client ty_injected with
+        | `Ok found_ty ->
+            Format.printf "Translation found: %a@."
+              Printtyp.raw_type_expr found_ty ;
+            let ty = instance env found_ty in
+            unify_exp_types loc env ty ty_expected ;
+            typ_exp
+        | `Error path ->
+            errorf ty_injected
+              "The type %a has no server translation, \
+               it cannot be used in an injection."
+              Printtyp.path path
+      else
+        errorf ty_injected
+          "This type has unbounded type variables, \
            it cannot be used in an injection."
-          Printtyp.type_expr ty_injected
-  )
 (* /ELIOM *)
 
 (* Typing of an expression with an expected type.
