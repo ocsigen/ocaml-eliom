@@ -217,9 +217,15 @@ let rec find_side name s = function
 
 let find_name name = find_side name (Eliom_side.get_side ())
 
-let rec get_all = function
+let rec get_all s = function
   | None -> []
-  | Some k -> k.data :: get_all k.previous
+  | Some k -> cons_ident s k
+
+and cons_ident s k =
+  if Eliom_side.conform s (side k.ident)
+  then k.data :: get_all s k.previous
+  else get_all s k.previous
+
 
 let rec find_all name = function
     Empty ->
@@ -227,7 +233,7 @@ let rec find_all name = function
   | Node(l, k, r, _) ->
       let c = compare name k.ident.name in
       if c = 0 then
-        k.data :: get_all k.previous
+        cons_ident (Eliom_side.get_side ()) k
       else
         find_all name (if c < 0 then l else r)
 
