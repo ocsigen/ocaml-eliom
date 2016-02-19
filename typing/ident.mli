@@ -81,3 +81,4 @@ include Identifiable.S with type t := t
 
 (* ELIOM *)
 val side : t -> [>Eliom_side.shside]
+val change_side : [<Eliom_side.shside] -> t -> unit

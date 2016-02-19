@@ -63,6 +63,20 @@ let check ~loc mk_error side message =
       (to_string current_side)
   else ()
 
+let client_load_path = ref []
+let server_load_path = ref []
+
+let set_load_path ~client ~server =
+  client_load_path := List.rev_append client !Config.load_path ;
+  server_load_path := List.rev_append server !Config.load_path ;
+  ()
+
+let get_load_path () =
+  match get_side () with
+  | `Server -> !server_load_path
+  | `Client -> !client_load_path
+  | `Shared -> !Config.load_path
+
 (** Utils *)
 let exp_add_attr ~attrs e =
   {e with pexp_attributes = attrs @ e.pexp_attributes}

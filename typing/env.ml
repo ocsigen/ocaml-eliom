@@ -437,7 +437,10 @@ let find_pers_struct check name =
   | exception Not_found ->
       let filename =
         try
-          find_in_path_uncap !load_path (name ^ ".cmi")
+          (* avoid the warning for unused open of Config *)
+          let _ = load_path in
+          let l = Eliom_side.get_load_path () in
+          find_in_path_uncap l (name ^ ".cmi")
         with Not_found ->
           Hashtbl.add persistent_structures name None;
           raise Not_found
@@ -531,7 +534,9 @@ let rec find_module_descr path env =
         in desc
       with Not_found ->
         if Ident.persistent id && not (Ident.name id = !current_unit)
-        then (find_pers_struct (Ident.name id)).ps_comps
+        then
+          Eliom_side.in_side (Ident.side id) @@ fun () ->
+          (find_pers_struct (Ident.name id)).ps_comps
         else raise Not_found
       end
   | Pdot(p, s, pos) ->
@@ -634,6 +639,7 @@ let find_module ~alias path env =
         in data
       with Not_found ->
         if Ident.persistent id && not (Ident.name id = !current_unit) then
+          Eliom_side.in_side (Ident.side id) @@ fun () ->
           let ps = find_pers_struct (Ident.name id) in
           md (Mty_signature(Lazy.force ps.ps_sig))
         else raise Not_found

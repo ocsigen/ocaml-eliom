@@ -1597,7 +1597,8 @@ let type_implementation sourcefile outputprefix modulename initial_env ast =
     if Sys.file_exists sourceintf then begin
       let intf_file =
         try
-          find_in_path_uncap !Config.load_path (modulename ^ ".cmi")
+          let l = Eliom_side.get_load_path () in
+          find_in_path_uncap l (modulename ^ ".cmi")
         with Not_found ->
           raise(Error(Location.in_file sourcefile, Env.empty,
                       Interface_not_compiled sourceintf)) in

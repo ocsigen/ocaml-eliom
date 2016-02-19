@@ -20,6 +20,9 @@ val check :
 val in_side : [<shside] -> (unit -> 'a) -> 'a
 val get_side : unit -> [>shside]
 
+val set_load_path : client:string list -> server:string list -> unit
+val get_load_path : unit -> string list
+
 val is_fragment : Parsetree.expression -> bool
 val get_fragment : Parsetree.expression -> Parsetree.expression
 

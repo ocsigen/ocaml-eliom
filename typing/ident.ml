@@ -44,6 +44,16 @@ let show_side i = match side i with
   | `Server -> "s"
   | `Shared -> ""
 
+let change_side s i =
+  if side i = `Shared then
+    match s with
+    | `Shared -> ()
+    | `Client | `Server ->
+        i.flags <-
+          i.flags
+          lor (side_to_flag s)
+          land (lnot @@ side_to_flag @@ Eliom_side.mirror s)
+
 (* /ELIOM *)
 
 (* A stamp of 0 denotes a persistent identifier *)
