@@ -36,6 +36,8 @@ let mirror = function
 
 let side : shside ref = ref `Shared
 
+exception Error of (shside * exn)
+
 let in_side new_side body =
    let old_side = !side in
    side := (new_side : [<shside] :> shside ) ;
@@ -43,11 +45,17 @@ let in_side new_side body =
     let r = body () in
     side := old_side; r
    with e ->
-     (* side := old_side; *)
+     let e' = Error (!side, e) in
+     side := old_side;
      (* We leak the side on purpose, allow better error reporting.
         In the type checker, exceptions seems not used for control flow
         that could break around in_side *)
-     raise e
+     raise e'
+
+let () = Location.register_error_of_exn @@ function
+    | Error (side, exn) ->
+        in_side side (fun () -> Location.error_of_exn exn)
+    | _ -> None
 
 let get_side () = (!side : shside :> [>shside])
 
