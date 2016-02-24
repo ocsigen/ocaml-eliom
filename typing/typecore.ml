@@ -60,16 +60,20 @@ let rec translate_path env f p =
   in
   new_p
 
-and translate_side_desc env = function
+and translate_side_expr env expr = match expr.desc with
   | Tconstr (p,args,_abbrev) ->
-      Tconstr
+      let desc = Tconstr
         (translate_path env Env.lookup_type p,
          List.map (translate_side_expr env) args,
          ref Mnil)
+      in
+      {expr with desc}
+
+  | Tlink t -> translate_side_expr env t
 
   (* Not sure *)
-  | Tvar x -> Tvar x
-  | Tunivar x -> Tunivar x
+  | Tvar _
+  | Tunivar _ -> expr
 
   (* For all the following, we just copy. *)
   | Tvariant _
@@ -84,17 +88,12 @@ and translate_side_desc env = function
   | Tpackage (_,_,_)
 
   (* Shouldn't happen, but not important. *)
-  | Tlink _
   | Tsubst _
 
     as ty ->
-      copy_type_desc ~keep_names:true (translate_side_expr env) ty
-
-and translate_side_expr env { desc; level; id } =
-  { desc = translate_side_desc env desc ;
-    level ;
-    id ;
-  }
+    {expr with
+     desc = copy_type_desc ~keep_names:true (translate_side_expr env) ty
+    }
 
 let translate_side env side expr =
   Eliom_side.in_side side @@ fun () ->
@@ -1997,8 +1996,11 @@ let rec type_exp ?recarg env sexp =
 and type_injection env e ty_expected =
   let loc = e.pexp_loc in
   let typ_exp =
+    begin_def () ;
     Eliom_side.in_side `Server @@ fun () ->
-    type_exp env e
+    let t = type_exp env e in
+    end_def () ;
+    t
   in
   let ty_injected = expand_head env typ_exp.exp_type in
 
