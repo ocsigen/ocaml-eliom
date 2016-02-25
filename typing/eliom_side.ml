@@ -75,14 +75,14 @@ let client_load_path = ref []
 let server_load_path = ref []
 
 let set_load_path ~client ~server =
-  client_load_path := List.rev_append client !Config.load_path ;
-  server_load_path := List.rev_append server !Config.load_path ;
+  client_load_path := List.rev client ;
+  server_load_path := List.rev server ;
   ()
 
 let get_load_path () =
   match get_side () with
-  | `Server -> !server_load_path
-  | `Client -> !client_load_path
+  | `Server -> !server_load_path @ !Config.load_path
+  | `Client -> !client_load_path @ !Config.load_path
   | `Shared -> !Config.load_path
 
 (** Utils *)
