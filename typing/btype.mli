@@ -108,7 +108,9 @@ type type_iterators =
     it_type_kind: type_iterators -> type_kind -> unit;
     it_do_type_expr: type_iterators -> type_expr -> unit;
     it_type_expr: type_iterators -> type_expr -> unit;
-    it_path: Path.t -> unit; }
+    it_path: Path.t -> unit;
+    it_ident: Ident.t -> unit;
+  }
 val type_iterators: type_iterators
         (* Iteration on arbitrary type information.
            [it_type_expr] calls [mark_type_node] to avoid loops. *)

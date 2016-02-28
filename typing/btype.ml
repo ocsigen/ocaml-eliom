@@ -289,7 +289,9 @@ type type_iterators =
     it_type_kind: type_iterators -> type_kind -> unit;
     it_do_type_expr: type_iterators -> type_expr -> unit;
     it_type_expr: type_iterators -> type_expr -> unit;
-    it_path: Path.t -> unit; }
+    it_path: Path.t -> unit;
+    it_ident: Ident.t -> unit;
+  }
 
 let iter_type_expr_cstr_args f = function
   | Cstr_tuple tl -> List.iter f tl
@@ -319,13 +321,27 @@ let type_iterators =
   let it_signature it =
     List.iter (it.it_signature_item it)
   and it_signature_item it = function
-      Sig_value (_, vd)     -> it.it_value_description it vd
-    | Sig_type (_, td, _)   -> it.it_type_declaration it td
-    | Sig_typext (_, td, _) -> it.it_extension_constructor it td
-    | Sig_module (_, md, _) -> it.it_module_declaration it md
-    | Sig_modtype (_, mtd)  -> it.it_modtype_declaration it mtd
-    | Sig_class (_, cd, _)  -> it.it_class_declaration it cd
-    | Sig_class_type (_, ctd, _) -> it.it_class_type_declaration it ctd
+      Sig_value (id, vd)     ->
+        it.it_ident id ;
+        it.it_value_description it vd
+    | Sig_type (id, td, _)   ->
+        it.it_ident id ;
+        it.it_type_declaration it td
+    | Sig_typext (id, td, _) ->
+        it.it_ident id ;
+        it.it_extension_constructor it td
+    | Sig_module (id, md, _) ->
+        it.it_ident id ;
+        it.it_module_declaration it md
+    | Sig_modtype (id, mtd)  ->
+        it.it_ident id ;
+        it.it_modtype_declaration it mtd
+    | Sig_class (id, cd, _)  ->
+        it.it_ident id ;
+        it.it_class_declaration it cd
+    | Sig_class_type (id, ctd, _) ->
+        it.it_ident id ;
+        it.it_class_type_declaration it ctd
   and it_value_description it vd =
     it.it_type_expr it vd.val_type
   and it_type_declaration it td =
@@ -354,7 +370,8 @@ let type_iterators =
       Mty_ident p
     | Mty_alias p -> it.it_path p
     | Mty_signature sg -> it.it_signature it sg
-    | Mty_functor (_, mto, mt) ->
+    | Mty_functor (id, mto, mt) ->
+        it.it_ident id;
         may (it.it_module_type it) mto;
         it.it_module_type it mt
   and it_class_type it = function
@@ -384,12 +401,15 @@ let type_iterators =
         may (fun (p,_) -> it.it_path p) (row_repr row).row_name
     | _ -> ()
   and it_path p = ()
+  and it_ident p = ()
   in
   { it_path; it_type_expr = it_do_type_expr; it_do_type_expr;
     it_type_kind; it_class_type; it_module_type;
     it_signature; it_class_type_declaration; it_class_declaration;
     it_modtype_declaration; it_module_declaration; it_extension_constructor;
-    it_type_declaration; it_value_description; it_signature_item; }
+    it_type_declaration; it_value_description; it_signature_item;
+    it_ident ;
+  }
 
 let copy_row f fixed row keep more =
   let fields = List.map
