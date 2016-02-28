@@ -52,26 +52,33 @@ let rec longident_of_path = function
       Longident.Lapply (longident_of_path p1, longident_of_path p2)
 
 exception No_translation of Path.t
-let rec translate_path env f p =
+let translate_path f p =
   let lid = longident_of_path p in
   let new_p, _ =
-    try f ?loc:None lid env
+    try f lid
     with Not_found -> raise (No_translation p)
   in
   new_p
 
-and translate_side_expr env expr = match expr.desc with
+let rec translate_side_expr f expr = match expr.desc with
   | Tconstr (p,args,_abbrev) ->
       let desc = Tconstr
-        (translate_path env Env.lookup_type p,
-         List.map (translate_side_expr env) args,
+        (f p,
+         List.map (translate_side_expr f) args,
          ref Mnil)
       in
       {expr with desc}
 
-  | Tlink t -> translate_side_expr env t
+  | Tlink t -> translate_side_expr f t
 
-  (* Not sure *)
+  | Tpackage (p,n,l) ->
+      let desc = Tpackage (
+          f p,
+          n, List.map (translate_side_expr f) l)
+      in
+      {expr with desc}
+
+  (* Must return the original expression, to preserve sharing *)
   | Tvar _
   | Tunivar _ -> expr
 
@@ -85,19 +92,19 @@ and translate_side_expr env expr = match expr.desc with
   | Tobject (_,_)
   | Tfield (_,_,_,_)
   | Tnil
-  | Tpackage (_,_,_)
 
   (* Shouldn't happen, but not important. *)
   | Tsubst _
 
     as ty ->
     {expr with
-     desc = copy_type_desc ~keep_names:true (translate_side_expr env) ty
+     desc = copy_type_desc ~keep_names:true (translate_side_expr f) ty
     }
 
 let translate_side env side expr =
   Eliom_side.in_side side @@ fun () ->
-  try `Ok (translate_side_expr env expr)
+  let f = translate_path (fun id -> Env.lookup_type id env) in
+  try `Ok (translate_side_expr f expr)
   with No_translation p -> `Error p
 
 (* /ELIOM *)
