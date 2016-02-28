@@ -391,12 +391,62 @@ let save_pers_struct crc ps =
     ps.ps_flags;
   Consistbl.set crc_units modname crc ps.ps_filename;
   add_import modname
+(* ELIOM *)
+
+module Trans_sig = struct
+
+  let it_ident i = Ident.change_side (Eliom_side.get_side ()) i
+  let it_path p = List.iter it_ident @@ Path.heads p
+  let it_do_type_expr it ty = match ty.desc with
+      Tconstr (p, tyl, abbrev) ->
+        it.it_path p ;
+        List.iter (it.it_type_expr it) tyl ;
+        iter_abbrev (it.it_type_expr it) !abbrev
+    | Tpackage (p, _, tyl) ->
+        it.it_path p ;
+        List.iter (it.it_type_expr it) tyl
+    | Tobject (ty, {contents}) ->
+        it.it_type_expr it ty ;
+        may (fun (p,tyl) ->
+          it.it_path p ;
+          List.iter (it.it_type_expr it) tyl
+        ) contents
+    | Tvariant row ->
+        may (fun (p,_) -> it.it_path p) (row_repr row).row_name
+    | Tlink _ ->
+        it.it_type_expr it ty
+    | Tpoly (ty,tyl) ->
+        List.iter (it.it_type_expr it) (ty::tyl)
+    | Ttuple tyl ->
+        List.iter (it.it_type_expr it) tyl
+    | Tfield (_,_,ty,ty')
+    | Tarrow (_,ty,ty',_) ->
+        it.it_type_expr it ty ;
+        it.it_type_expr it ty'
+    | Tnil
+    | Tsubst _
+    | Tvar _
+    | Tunivar _ ->
+        ()
+
+  let it =
+    { type_iterators with
+      it_path ; it_ident ; it_do_type_expr ;
+    }
+
+  let signature s =
+    if Eliom_side.get_side () = `Shared then ()
+    else it.it_signature it s
+
+end
+(* /ELIOM *)
 
 let read_pers_struct check modname filename =
   add_import modname;
   let cmi = read_cmi filename in
   let name = cmi.cmi_name in
   let sign = cmi.cmi_sign in
+  (* ELIOM *) Trans_sig.signature sign ;
   let crcs = cmi.cmi_crcs in
   let flags = cmi.cmi_flags in
   let deprecated =
@@ -435,16 +485,20 @@ let find_pers_struct check name =
   | Some ps -> ps
   | None -> raise Not_found
   | exception Not_found ->
-      let filename =
+      (* ELIOM *)
+      let filename, side =
         try
-          (* avoid the warning for unused open of Config *)
-          let _ = load_path in
-          let l = Eliom_side.get_load_path () in
-          find_in_path_uncap l (name ^ ".cmi")
-        with Not_found ->
-          Hashtbl.add persistent_structures name None;
-          raise Not_found
+          let l = !load_path in
+          find_in_path_uncap l (name ^ ".cmi"), `Shared
+        with Not_found -> try
+            let l = Eliom_side.get_load_path () in
+            let side = Eliom_side.get_side () in
+            find_in_path_uncap l (name ^ ".cmi"), side
+          with Not_found ->
+            Hashtbl.add persistent_structures name None;
+            raise Not_found
       in
+      Eliom_side.in_side side @@ fun () ->
       read_pers_struct check name filename
 
 (* Emits a warning if there is no valid cmi for name *)
@@ -535,6 +589,7 @@ let rec find_module_descr path env =
       with Not_found ->
         if Ident.persistent id && not (Ident.name id = !current_unit)
         then
+          (* ELIOM *)
           Eliom_side.in_side (Ident.side id) @@ fun () ->
           (find_pers_struct (Ident.name id)).ps_comps
         else raise Not_found
@@ -639,6 +694,7 @@ let find_module ~alias path env =
         in data
       with Not_found ->
         if Ident.persistent id && not (Ident.name id = !current_unit) then
+          (* ELIOM *)
           Eliom_side.in_side (Ident.side id) @@ fun () ->
           let ps = find_pers_struct (Ident.name id) in
           md (Mty_signature(Lazy.force ps.ps_sig))

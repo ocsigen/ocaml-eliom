@@ -81,8 +81,8 @@ let set_load_path ~client ~server =
 
 let get_load_path () =
   match get_side () with
-  | `Server -> !server_load_path @ !Config.load_path
-  | `Client -> !client_load_path @ !Config.load_path
+  | `Server -> !server_load_path
+  | `Client -> !client_load_path
   | `Shared -> !Config.load_path
 
 (** Utils *)
