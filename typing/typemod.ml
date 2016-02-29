@@ -49,6 +49,60 @@ exception Error_forward of Location.error
 
 open Typedtree
 
+(* ELIOM *)
+let add_mod_attr attr = function
+  | Tstr_eval (e, attrs) -> Tstr_eval (e, attr::attrs)
+  | Tstr_primitive x ->
+      Tstr_primitive {x with val_attributes = attr :: x.val_attributes}
+  | Tstr_value (rc,x) ->
+      Tstr_value (rc,List.map
+          (fun x -> {x with vb_attributes = attr :: x.vb_attributes}) x)
+  | Tstr_type (r,l) ->
+      Tstr_type (r,List.map
+          (fun x -> {x with typ_attributes = attr :: x.typ_attributes}) l)
+  | Tstr_typext tex ->
+      Tstr_typext {tex with tyext_attributes = attr :: tex.tyext_attributes}
+  | Tstr_exception exn ->
+      Tstr_exception {exn with ext_attributes = attr :: exn.ext_attributes}
+  | Tstr_module mb ->
+      Tstr_module {mb with mb_attributes = attr :: mb.mb_attributes}
+  | Tstr_recmodule rmb ->
+      Tstr_recmodule (List.map
+          (fun mb -> {mb with mb_attributes = attr :: mb.mb_attributes}) rmb)
+  | Tstr_modtype mt ->
+      Tstr_modtype {mt with mtd_attributes = attr :: mt.mtd_attributes}
+  | Tstr_open op ->
+      Tstr_open {op with open_attributes = attr :: op.open_attributes}
+  | Tstr_include ic ->
+      Tstr_include {ic with incl_attributes = attr :: ic.incl_attributes}
+  | Tstr_class cls ->
+      Tstr_class (List.map
+          (fun (cl,s) -> {cl with ci_attributes = attr :: cl.ci_attributes}, s) cls)
+  | Tstr_class_type clt ->
+      Tstr_class_type (List.map
+          (fun (id,s,cl) -> id,s,{cl with ci_attributes = attr :: cl.ci_attributes})
+            clt)
+  | Tstr_attribute at ->
+      Tstr_attribute at
+
+let add_tsigi_attr attr = function
+  | Sig_value (id,vd) ->
+      Sig_value (id,{vd with val_attributes = attr :: vd.val_attributes})
+  | Sig_type (id,td,rc) ->
+      Sig_type (id,{td with type_attributes = attr :: td.type_attributes},rc)
+  | Sig_typext (id,ec,es) ->
+      Sig_typext (id,{ec with ext_attributes = attr :: ec.ext_attributes},es)
+  | Sig_module (ed,md,rs) ->
+      Sig_module (ed,{md with md_attributes = attr :: md.md_attributes},rs)
+  | Sig_modtype (id,mtd) ->
+      Sig_modtype (id,{mtd with mtd_attributes = attr :: mtd.mtd_attributes})
+  | Sig_class (id,cd,rs) ->
+      Sig_class (id,{cd with cty_attributes = attr :: cd.cty_attributes},rs)
+  | Sig_class_type (id,ctd,rs) ->
+      Sig_class_type (id,{ctd with clty_attributes = attr :: ctd.clty_attributes},rs)
+
+(* /ELIOM *)
+
 let fst3 (x,_,_) = x
 
 let rec path_concat head p =
@@ -1212,8 +1266,10 @@ and type_structure ?(toplevel = false) funct_body anchor env sstr scope =
     (* ELIOM *)
     | _ when Eliom_side.is_section stri ->
         let side, stri = Eliom_side.get_section stri in
+        let attr = Eliom_side.section_attr side loc in
         Eliom_side.in_side side @@ fun () ->
-        type_str_item env srem stri
+        let tmod, tsig, env = type_str_item env srem stri in
+        add_mod_attr attr tmod, List.map (add_tsigi_attr attr) tsig, env
     (* /ELIOM *)
     | Pstr_eval (sexpr, attrs) ->
         let expr =

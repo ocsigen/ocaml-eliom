@@ -31,7 +31,7 @@ val get_injection : Parsetree.expression -> Parsetree.expression
 
 val is_section : Parsetree.structure_item -> bool
 val get_section : Parsetree.structure_item -> (side * Parsetree.structure_item)
-
+val section_attr : [<shside] -> Location.t -> Parsetree.attribute
 
 val fragment : Longident.t
 val fragment_attr : Location.t -> Parsetree.attribute

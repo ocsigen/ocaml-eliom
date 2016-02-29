@@ -133,6 +133,7 @@ let get_injection e =  match e.pexp_desc with
 
 let client_section = "eliom.client"
 let server_section = "eliom.server"
+let shared_section = "eliom.shared"
 
 let is_section e = match e.pstr_desc with
   | Pstr_extension (({Location.txt},payload),_)
@@ -157,3 +158,10 @@ let fragment = Longident.parse "Eliom_runtime.fragment"
 let fragment_attr loc = ({Location.txt=fragment_name; loc},PStr [])
 
 let injection_attr loc = ({Location.txt=injection_name; loc},PStr [])
+
+let section_attr side loc =
+  let txt = match side with
+    | `Client -> client_section
+    | `Server -> server_section
+    | `Shared -> shared_section
+  in ({Location.txt; loc},PStr [])
