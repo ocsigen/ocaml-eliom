@@ -2082,16 +2082,17 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
       let to_unify = Predef.type_fragment ty in
       Eliom_side.in_side `Client @@ fun () ->
       unify_exp_types loc env to_unify ty_expected;
-      let arg =
+      let new_exp =
         Eliom_side.in_side `Client @@ fun () ->
         type_expect env e ty
       in
-      let f = texp_ident env "Obj.magic" in
       re {
-        exp_desc = texp_apply f [arg];
-        exp_loc = loc; exp_extra = [];
+        new_exp with
+        exp_loc = loc;
         exp_type = instance env ty_expected;
-        exp_attributes = Eliom_side.fragment_attr loc :: sexp.pexp_attributes;
+        exp_attributes =
+          Eliom_side.fragment_attr loc :: sexp.pexp_attributes @
+            new_exp.exp_attributes ;
         exp_env = env;
       }
   | _ when Eliom_side.is_injection sexp ->
@@ -2099,13 +2100,14 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
       Eliom_side.check ~loc (fun e -> Error_forward e)
         `Client "Injections" ;
       let e = Eliom_side.get_injection sexp in
-      let typ_exp = type_injection env e ty_expected in
-      let f = texp_ident env "Obj.magic" in
+      let new_exp = type_injection env e ty_expected in
       re {
-        exp_desc = texp_apply f [typ_exp] ;
-        exp_loc = loc; exp_extra = [];
+        new_exp with
+        exp_loc = loc;
         exp_type = instance env ty_expected;
-        exp_attributes = Eliom_side.injection_attr loc :: sexp.pexp_attributes;
+        exp_attributes =
+          Eliom_side.injection_attr loc :: sexp.pexp_attributes @
+            new_exp.exp_attributes ;
         exp_env = env;
       }
   (* /ELIOM *)
