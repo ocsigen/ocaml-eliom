@@ -2031,8 +2031,8 @@ and type_injection env e ty_expected =
       if closed_schema env ty_injected then
         match translate_side env `Client ty_injected with
         | `Ok found_ty ->
-            Format.printf "Translation found: %a@."
-              Printtyp.raw_type_expr found_ty ;
+            (* Format.printf "Translation found: %a@." *)
+            (*   Printtyp.raw_type_expr found_ty ; *)
             let ty = instance env found_ty in
             unify_exp_types loc env ty ty_expected ;
             typ_exp
