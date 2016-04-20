@@ -43,6 +43,10 @@ let incompatible o =
   exit 2
 
 module Options = Main_args.Make_bytecomp_options (struct
+  let _side = option_with_arg "-side"
+  let _client_I = option_with_arg "-client-I"
+  let _server_I = option_with_arg "-server-I"
+
   let _a () = make_archive := true; option "-a" ()
   let _absname = option "-absname"
   let _annot = option "-annot"

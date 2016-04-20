@@ -35,6 +35,21 @@ let init_path ?(dir="") native =
     List.map (Misc.expand_directory Config.standard_library) dirs in
   Config.load_path := dir ::
       List.rev_append exp_dirs (Clflags.std_include_dir ());
+  let prepare_dir d =
+    let dirs =
+      if !Clflags.use_threads then "+threads" :: !d
+      else if !Clflags.use_vmthreads && not native then
+        "+vmthreads" :: !d
+      else !d
+    in
+    let exp_dirs =
+      List.map (Misc.expand_directory Config.standard_library) dirs
+    in
+    dir :: List.rev_append exp_dirs (Clflags.std_include_dir ())
+  in
+  Eliom_side.set_load_path
+    ~client:(prepare_dir Clflags.client_include_dirs)
+    ~server:(prepare_dir Clflags.server_include_dirs) ;
   Env.reset_cache ()
 
 (* Return the initial environment in which compilation proceeds. *)

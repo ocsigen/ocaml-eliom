@@ -701,6 +701,21 @@ let mk__ f =
   "<file>  Treat <file> as a file name (even if it starts with `-')"
 ;;
 
+let mk_client_I f =
+  "-client-I", Arg.String f,
+  "<dir> Add <dir> to the list of client include directories"
+;;
+
+let mk_server_I f =
+  "-server-I", Arg.String f,
+  "<dir> Add <dir> to the list of server include directories"
+;;
+
+let mk_side f =
+  "-side", Arg.Symbol (["client"; "server"; "shared"], f),
+  " Determine the default side of the compiled file"
+;;
+
 module type Common_options = sig
   val _absname : unit -> unit
   val _I : string -> unit
@@ -742,6 +757,9 @@ module type Common_options = sig
 end
 
 module type Compiler_options = sig
+  val _client_I : string -> unit
+  val _server_I : string -> unit
+  val _side : string -> unit
   val _a : unit -> unit
   val _annot : unit -> unit
   val _binannot : unit -> unit
@@ -908,6 +926,9 @@ end;;
 module Make_bytecomp_options (F : Bytecomp_options) =
 struct
   let list = [
+    mk_client_I F._client_I;
+    mk_server_I F._server_I;
+    mk_side F._side;
     mk_a F._a;
     mk_absname F._absname;
     mk_annot F._annot;
@@ -1049,6 +1070,9 @@ end;;
 module Make_optcomp_options (F : Optcomp_options) =
 struct
   let list = [
+    mk_client_I F._client_I;
+    mk_server_I F._server_I;
+    mk_side F._side;
     mk_a F._a;
     mk_absname F._absname;
     mk_annot F._annot;

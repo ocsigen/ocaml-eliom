@@ -57,6 +57,9 @@ module type Common_options = sig
 end;;
 
 module type Compiler_options = sig
+  val _client_I : string -> unit
+  val _server_I : string -> unit
+  val _side : string -> unit
   val _a : unit -> unit
   val _annot : unit -> unit
   val _binannot : unit -> unit

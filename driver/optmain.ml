@@ -97,6 +97,10 @@ module Options = Main_args.Make_optcomp_options (struct
   let set r () = r := true
   let clear r () = r := false
 
+  let _side = Eliom_side.change_side
+  let _client_I s = client_include_dirs := s :: !client_include_dirs
+  let _server_I s = server_include_dirs := s :: !server_include_dirs
+
   let _a = set make_archive
   let _absname = set Location.absname
   let _annot = set annotations
@@ -111,7 +115,7 @@ module Options = Main_args.Make_optcomp_options (struct
   let _for_pack s = for_package := Some s
   let _g = set debug
   let _i () = print_types := true; compile_only := true
-  let _I dir = include_dirs := dir :: !include_dirs
+  let _I dir = include_dirs := dir :: !include_dirs ; _client_I dir ; _server_I dir
   let _impl = impl
   let _inline spec =
     Float_arg_helper.parse spec ~update:inline_threshold

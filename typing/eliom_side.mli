@@ -19,6 +19,7 @@ val check :
 
 val in_side : [<shside] -> (unit -> 'a) -> 'a
 val get_side : unit -> [>shside]
+val change_side : string -> unit
 
 val set_load_path : client:string list -> server:string list -> unit
 val get_load_path : unit -> string list

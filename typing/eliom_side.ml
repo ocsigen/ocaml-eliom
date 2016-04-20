@@ -58,6 +58,11 @@ let () = Location.register_error_of_exn @@ function
     | _ -> None
 
 let get_side () = (!side : shside :> [>shside])
+let change_side = function
+  | "server" -> side := `Server
+  | "client" -> side := `Client
+  | "shared" -> side := `Shared
+  | _ -> ()
 
 let check ~loc mk_error side message =
   let current_side = get_side () in
