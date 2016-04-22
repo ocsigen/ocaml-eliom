@@ -17,9 +17,9 @@
 
 type t
 
-val create: ?side:Eliom_side.shside -> string -> t
-val create_persistent: ?side:Eliom_side.shside -> string -> t
-val create_predef_exn: ?side:Eliom_side.shside -> string -> t
+val create: ?side:Eliom_base.shside -> string -> t
+val create_persistent: ?side:Eliom_base.shside -> string -> t
+val create_predef_exn: ?side:Eliom_base.shside -> string -> t
 val rename: t -> t
 val name: t -> string
 val with_name: t -> string -> t
@@ -71,7 +71,7 @@ val fold_name: (t -> 'a -> 'b -> 'b) -> 'a tbl -> 'b -> 'b
 val fold_all: (t -> 'a -> 'b -> 'b) -> 'a tbl -> 'b -> 'b
 val iter: (t -> 'a -> unit) -> 'a tbl -> unit
 
-val find_side : string -> Eliom_side.shside -> 'a tbl -> 'a
+val find_side : string -> Eliom_base.shside -> 'a tbl -> 'a
 
 (* Idents for sharing keys *)
 
@@ -80,5 +80,5 @@ val make_key_generator : unit -> (t -> t)
 include Identifiable.S with type t := t
 
 (* ELIOM *)
-val side : t -> [>Eliom_side.shside]
-val change_side : [<Eliom_side.shside] -> t -> unit
+val side : t -> [>Eliom_base.shside]
+val change_side : [<Eliom_base.shside] -> t -> unit

@@ -47,7 +47,7 @@ let init_path ?(dir="") native =
     in
     dir :: List.rev_append exp_dirs (Clflags.std_include_dir ())
   in
-  Eliom_side.set_load_path
+  Eliom_base.set_load_path
     ~client:(prepare_dir Clflags.client_include_dirs)
     ~server:(prepare_dir Clflags.server_include_dirs) ;
   Env.reset_cache ()

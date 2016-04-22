@@ -395,7 +395,7 @@ let save_pers_struct crc ps =
 
 module Trans_sig = struct
 
-  let it_ident i = Ident.change_side (Eliom_side.get_side ()) i
+  let it_ident i = Ident.change_side (Eliom_base.get_side ()) i
   let it_path p = List.iter it_ident @@ Path.heads p
   let it_do_type_expr it ty = match ty.desc with
       Tconstr (p, tyl, abbrev) ->
@@ -435,7 +435,7 @@ module Trans_sig = struct
     }
 
   let signature s =
-    if Eliom_side.get_side () = `Shared then ()
+    if Eliom_base.get_side () = `Shared then ()
     else it.it_signature it s
 
 end
@@ -491,14 +491,14 @@ let find_pers_struct check name =
           let l = !load_path in
           find_in_path_uncap l (name ^ ".cmi"), `Shared
         with Not_found -> try
-            let l = Eliom_side.get_load_path () in
-            let side = Eliom_side.get_side () in
+            let l = Eliom_base.get_load_path () in
+            let side = Eliom_base.get_side () in
             find_in_path_uncap l (name ^ ".cmi"), side
           with Not_found ->
             Hashtbl.add persistent_structures name None;
             raise Not_found
       in
-      Eliom_side.in_side side @@ fun () ->
+      Eliom_base.in_side side @@ fun () ->
       read_pers_struct check name filename
 
 (* Emits a warning if there is no valid cmi for name *)
@@ -590,7 +590,7 @@ let rec find_module_descr path env =
         if Ident.persistent id && not (Ident.name id = !current_unit)
         then
           (* ELIOM *)
-          Eliom_side.in_side (Ident.side id) @@ fun () ->
+          Eliom_base.in_side (Ident.side id) @@ fun () ->
           (find_pers_struct (Ident.name id)).ps_comps
         else raise Not_found
       end
@@ -695,7 +695,7 @@ let find_module ~alias path env =
       with Not_found ->
         if Ident.persistent id && not (Ident.name id = !current_unit) then
           (* ELIOM *)
-          Eliom_side.in_side (Ident.side id) @@ fun () ->
+          Eliom_base.in_side (Ident.side id) @@ fun () ->
           let ps = find_pers_struct (Ident.name id) in
           md (Mty_signature(Lazy.force ps.ps_sig))
         else raise Not_found

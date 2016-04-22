@@ -48,7 +48,7 @@ COMPILEROBJS=\
   ../../parsing/ast_mapper.cmo ../../parsing/ast_iterator.cmo \
   ../../parsing/attr_helper.cmo \
   ../../parsing/builtin_attributes.cmo \
-  ../../typing/eliom_side.cmo ../../typing/ident.cmo ../../typing/path.cmo \
+  ../../typing/eliom_base.cmo ../../typing/ident.cmo ../../typing/path.cmo \
   ../../typing/primitive.cmo ../../typing/types.cmo \
   ../../typing/btype.cmo ../../typing/subst.cmo ../../typing/predef.cmo \
   ../../typing/datarepr.cmo ../../typing/cmi_format.cmo ../../typing/env.cmo \

@@ -52,7 +52,7 @@ let change_side s i =
         i.flags <-
           i.flags
           lor (side_to_flag s)
-          land (lnot @@ side_to_flag @@ Eliom_side.mirror s)
+          land (lnot @@ side_to_flag @@ Eliom_base.mirror s)
 
 (* /ELIOM *)
 
@@ -60,15 +60,15 @@ let change_side s i =
 
 let currentstamp = ref 0
 
-let create ?(side=Eliom_side.get_side ()) s =
+let create ?(side=Eliom_base.get_side ()) s =
   incr currentstamp;
   { name = s; stamp = !currentstamp; flags = side_to_flag side }
 
-let create_predef_exn ?(side=Eliom_side.get_side ()) s =
+let create_predef_exn ?(side=Eliom_base.get_side ()) s =
   incr currentstamp;
   { name = s; stamp = !currentstamp; flags = predef_exn_flag lor side_to_flag side}
 
-let create_persistent ?(side=Eliom_side.get_side ()) s =
+let create_persistent ?(side=Eliom_base.get_side ()) s =
   { name = s; stamp = 0; flags = global_flag lor side_to_flag side }
 
 let rename i =
@@ -209,7 +209,7 @@ let rec find_name_side s = function
     None ->
       raise Not_found
   | Some k ->
-      if Eliom_side.conform s (side k.ident)
+      if Eliom_base.conform s (side k.ident)
       then k.data
       else find_name_side s k.previous
 
@@ -219,20 +219,20 @@ let rec find_side name s = function
   | Node(l, k, r, _) ->
       let c = compare name k.ident.name in
       if c = 0 then
-        if Eliom_side.conform s (side k.ident)
+        if Eliom_base.conform s (side k.ident)
         then k.data
         else find_name_side s k.previous
       else
         find_side name s (if c < 0 then l else r)
 
-let find_name name = find_side name (Eliom_side.get_side ())
+let find_name name = find_side name (Eliom_base.get_side ())
 
 let rec get_all s = function
   | None -> []
   | Some k -> cons_ident s k
 
 and cons_ident s k =
-  if Eliom_side.conform s (side k.ident)
+  if Eliom_base.conform s (side k.ident)
   then k.data :: get_all s k.previous
   else get_all s k.previous
 
@@ -243,7 +243,7 @@ let rec find_all name = function
   | Node(l, k, r, _) ->
       let c = compare name k.ident.name in
       if c = 0 then
-        cons_ident (Eliom_side.get_side ()) k
+        cons_ident (Eliom_base.get_side ()) k
       else
         find_all name (if c < 0 then l else r)
 

@@ -1264,10 +1264,10 @@ and type_structure ?(toplevel = false) funct_body anchor env sstr scope =
   let rec type_str_item env srem ({pstr_loc = loc; pstr_desc = desc} as stri) =
     match desc with
     (* ELIOM *)
-    | _ when Eliom_side.is_section stri ->
-        let side, stri = Eliom_side.get_section stri in
-        let attr = Eliom_side.section_attr side loc in
-        Eliom_side.in_side side @@ fun () ->
+    | _ when Eliom_base.is_section stri ->
+        let side, stri = Eliom_base.get_section stri in
+        let attr = Eliom_base.section_attr side loc in
+        Eliom_base.in_side side @@ fun () ->
         let tmod, tsig, env = type_str_item env srem stri in
         add_mod_attr attr tmod, List.map (add_tsigi_attr attr) tsig, env
     (* /ELIOM *)
@@ -1653,7 +1653,7 @@ let type_implementation sourcefile outputprefix modulename initial_env ast =
     if Sys.file_exists sourceintf then begin
       let intf_file =
         try
-          let l = Eliom_side.get_load_path () in
+          let l = Eliom_base.get_load_path () in
           find_in_path_uncap l (modulename ^ ".cmi")
         with Not_found ->
           raise(Error(Location.in_file sourcefile, Env.empty,

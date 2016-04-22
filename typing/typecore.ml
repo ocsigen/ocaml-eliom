@@ -102,7 +102,7 @@ let rec translate_side_expr f expr = match expr.desc with
     }
 
 let translate_side env side expr =
-  Eliom_side.in_side side @@ fun () ->
+  Eliom_base.in_side side @@ fun () ->
   let f = translate_path (fun id -> Env.lookup_type id env) in
   try `Ok (translate_side_expr f expr)
   with No_translation p -> `Error p
@@ -224,10 +224,10 @@ let iter_expression f e =
     f e;
     match e.pexp_desc with
     (*** ELIOM ***)
-    | _ when Eliom_side.is_fragment e ->
-        Eliom_side.in_side `Client @@ fun () ->
-        f @@ Eliom_side.get_fragment e
-    | _ when Eliom_side.is_injection e -> ()
+    | _ when Eliom_base.is_fragment e ->
+        Eliom_base.in_side `Client @@ fun () ->
+        f @@ Eliom_base.get_fragment e
+    | _ when Eliom_base.is_injection e -> ()
     (*** /ELIOM ***)
     | Pexp_extension _ (* we don't iterate under extension point *)
     | Pexp_ident _
@@ -287,9 +287,9 @@ let iter_expression f e =
   and structure_item str =
     match str.pstr_desc with
     (* ELIOM *)
-    | _ when Eliom_side.is_section str ->
-        let side, str = Eliom_side.get_section str in
-        Eliom_side.in_side side @@ fun () -> structure_item str
+    | _ when Eliom_base.is_section str ->
+        let side, str = Eliom_base.get_section str in
+        Eliom_base.in_side side @@ fun () -> structure_item str
     (* /ELIOM *)
     | Pstr_eval (e, _) -> expr e
     | Pstr_value (_, pel) -> List.iter binding pel
@@ -2007,7 +2007,7 @@ and type_injection env e ty_expected =
   let loc = e.pexp_loc in
   let typ_exp =
     begin_def () ;
-    Eliom_side.in_side `Server @@ fun () ->
+    Eliom_base.in_side `Server @@ fun () ->
     let t = type_exp env e in
     end_def () ;
     t
@@ -2072,18 +2072,18 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
   in
   match sexp.pexp_desc with
   (* ELIOM *)
-  | _ when Eliom_side.is_fragment sexp ->
+  | _ when Eliom_base.is_fragment sexp ->
       (* Check that we are indeed on the server. *)
-      Eliom_side.check ~loc (fun e -> Error_forward e)
+      Eliom_base.check ~loc (fun e -> Error_forward e)
         `Server "Fragments" ;
       (* Follow Pexp_lazy *)
-      let e = Eliom_side.get_fragment sexp in
-      let ty = Eliom_side.in_side `Client @@ fun () -> newgenvar () in
+      let e = Eliom_base.get_fragment sexp in
+      let ty = Eliom_base.in_side `Client @@ fun () -> newgenvar () in
       let to_unify = Predef.type_fragment ty in
-      Eliom_side.in_side `Client @@ fun () ->
+      Eliom_base.in_side `Client @@ fun () ->
       unify_exp_types loc env to_unify ty_expected;
       let new_exp =
-        Eliom_side.in_side `Client @@ fun () ->
+        Eliom_base.in_side `Client @@ fun () ->
         type_expect env e ty
       in
       re {
@@ -2091,22 +2091,22 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
         exp_loc = loc;
         exp_type = instance env ty_expected;
         exp_attributes =
-          Eliom_side.fragment_attr loc :: sexp.pexp_attributes @
+          Eliom_base.fragment_attr loc :: sexp.pexp_attributes @
             new_exp.exp_attributes ;
         exp_env = env;
       }
-  | _ when Eliom_side.is_injection sexp ->
+  | _ when Eliom_base.is_injection sexp ->
       (* Check that we are indeed on the client. *)
-      Eliom_side.check ~loc (fun e -> Error_forward e)
+      Eliom_base.check ~loc (fun e -> Error_forward e)
         `Client "Injections" ;
-      let e = Eliom_side.get_injection sexp in
+      let e = Eliom_base.get_injection sexp in
       let new_exp = type_injection env e ty_expected in
       re {
         new_exp with
         exp_loc = loc;
         exp_type = instance env ty_expected;
         exp_attributes =
-          Eliom_side.injection_attr loc :: sexp.pexp_attributes @
+          Eliom_base.injection_attr loc :: sexp.pexp_attributes @
             new_exp.exp_attributes ;
         exp_env = env;
       }

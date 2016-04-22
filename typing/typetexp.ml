@@ -342,7 +342,7 @@ let rec transl_type env policy styp =
       let (path, decl) = find_type env styp.ptyp_loc lid.txt in
       (* ELIOM *)
       begin if Path.same path Predef.path_fragment
-        then Eliom_side.in_side `Client
+        then Eliom_base.in_side `Client
         else fun f -> f ()
       end @@ fun () ->
       (* /ELIOM *)
@@ -779,19 +779,19 @@ open Printtyp
    same side as the current scope.
 *)
 let filter_add side name path l = match path with
-  | Some path when Eliom_side.conform (Ident.side @@ Path.head path) side
+  | Some path when Eliom_base.conform (Ident.side @@ Path.head path) side
     -> name::l
   | _ -> l
 
-exception Foo of Eliom_side.shside
+exception Foo of Eliom_base.shside
 
 let check_injection ppf path fold env s =
-  let side = Eliom_side.get_side () in
-  let mside = Eliom_side.mirror side in
+  let side = Eliom_base.get_side () in
+  let mside = Eliom_base.mirror side in
   let aux name path acc = match path with
     | Some path ->
         let pside = Ident.side @@ Path.head path in
-        if Eliom_side.conform pside mside && name = s then raise (Foo pside)
+        if Eliom_base.conform pside mside && name = s then raise (Foo pside)
         else acc
     | None -> acc
   in
@@ -799,13 +799,13 @@ let check_injection ppf path fold env s =
   with Foo pside ->
     Format.fprintf ppf
       "@\nHint: The current scope is %s but this identifier is available in %s scope.@?"
-      (Eliom_side.to_string side)
-      (Eliom_side.to_string pside)
+      (Eliom_base.to_string side)
+      (Eliom_base.to_string pside)
 
 (* /ELIOM *)
 
 let spellcheck ppf fold env lid =
-  let side = Eliom_side.get_side () in
+  let side = Eliom_base.get_side () in
   let choices ~path name =
     let env = fold (filter_add side) path env [] in
     Misc.spellcheck env name in
