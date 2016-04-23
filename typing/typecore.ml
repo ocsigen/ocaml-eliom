@@ -23,92 +23,6 @@ open Typedtree
 open Btype
 open Ctype
 
-(* ELIOM *)
-(* Utilities *)
-let mk_texp ~env ?(attrs=[]) ?(loc=Location.none) desc ty =
-  { exp_desc = desc; exp_type = ty;
-    exp_loc  = loc; exp_extra = [];
-    exp_attributes = attrs;
-    exp_env  = env }
-
-let texp_ident env name =
-  let lid     = Longident.parse name in
-  let (p, vd) = try Env.lookup_value lid env
-                with Not_found ->
-                  Misc.fatal_error ("Trx.find_value: " ^ name) in
-  mk_texp ~env (Texp_ident (p,mknoloc lid, vd))
-          (Ctype.instance env vd.val_type)
-
-let texp_apply : Typedtree.expression -> Typedtree.expression list ->
- Typedtree.expression_desc = fun f args ->
-   Texp_apply(f, List.map (fun arg -> (Nolabel,Some arg)) args)
-
-let rec longident_of_path = function
-  | Path.Pident id ->
-      Longident.Lident (Ident.name id)
-  | Path.Pdot (p,s,i) ->
-      Longident.Ldot (longident_of_path p, s)
-  | Path.Papply (p1,p2) ->
-      Longident.Lapply (longident_of_path p1, longident_of_path p2)
-
-exception No_translation of Path.t
-let translate_path f p =
-  let lid = longident_of_path p in
-  let new_p, _ =
-    try f lid
-    with Not_found -> raise (No_translation p)
-  in
-  new_p
-
-let rec translate_side_expr f expr = match expr.desc with
-  | Tconstr (p,args,_abbrev) ->
-      let desc = Tconstr
-        (f p,
-         List.map (translate_side_expr f) args,
-         ref Mnil)
-      in
-      {expr with desc}
-
-  | Tlink t -> translate_side_expr f t
-
-  | Tpackage (p,n,l) ->
-      let desc = Tpackage (
-          f p,
-          n, List.map (translate_side_expr f) l)
-      in
-      {expr with desc}
-
-  (* Must return the original expression, to preserve sharing *)
-  | Tvar _
-  | Tunivar _ -> expr
-
-  (* For all the following, we just copy. *)
-  | Tvariant _
-  | Tpoly (_,_)
-  | Ttuple _
-
-  (* Technically, those can't be serialized. *)
-  | Tarrow (_,_,_,_)
-  | Tobject (_,_)
-  | Tfield (_,_,_,_)
-  | Tnil
-
-  (* Shouldn't happen, but not important. *)
-  | Tsubst _
-
-    as ty ->
-    {expr with
-     desc = copy_type_desc ~keep_names:true (translate_side_expr f) ty
-    }
-
-let translate_side env side expr =
-  Eliom_base.in_side side @@ fun () ->
-  let f = translate_path (fun id -> Env.lookup_type id env) in
-  try `Ok (translate_side_expr f expr)
-  with No_translation p -> `Error p
-
-(* /ELIOM *)
-
 type error =
     Polymorphic_label of Longident.t
   | Constructor_arity_mismatch of Longident.t * int * int
@@ -223,12 +137,12 @@ let iter_expression f e =
   let rec expr e =
     f e;
     match e.pexp_desc with
-    (*** ELIOM ***)
+    (* ELIOM *)
     | _ when Eliom_base.is_fragment e ->
         Eliom_base.in_side `Client @@ fun () ->
         f @@ Eliom_base.get_fragment e
     | _ when Eliom_base.is_injection e -> ()
-    (*** /ELIOM ***)
+    (* /ELIOM *)
     | Pexp_extension _ (* we don't iterate under extension point *)
     | Pexp_ident _
     | Pexp_new _
@@ -2029,14 +1943,14 @@ and type_injection env e ty_expected =
   | _ ->
       generalize ty_injected ;
       if closed_schema env ty_injected then
-        match translate_side env `Client ty_injected with
-        | `Ok found_ty ->
+        match Eliom_typing.translate env `Client ty_injected with
+        | Ok found_ty ->
             (* Format.printf "Translation found: %a@." *)
             (*   Printtyp.raw_type_expr found_ty ; *)
             let ty = instance env found_ty in
             unify_exp_types loc env ty ty_expected ;
             typ_exp
-        | `Error path ->
+        | Error path ->
             errorf ty_injected
               "The type %a has no server translation, \
                it cannot be used in an injection."

@@ -1,4 +1,4 @@
-[@@@ocaml.warning "+a-4-9-30-40-41-42"]
+[@@@ocaml.warning "+a-4-9-40-42"]
 open Parsetree
 open Ast_helper
 
@@ -45,17 +45,20 @@ let in_side new_side body =
     let r = body () in
     side := old_side; r
    with e ->
-     let e' = Error (!side, e) in
+     let e' : exn = Error (!side, e) in
      side := old_side;
      (* We leak the side on purpose, allow better error reporting.
         In the type checker, exceptions seems not used for control flow
         that could break around in_side *)
      raise e'
 
-let () = Location.register_error_of_exn @@ function
+let () =
+  let handler : exn -> _  = function
     | Error (side, exn) ->
         in_side side (fun () -> Location.error_of_exn exn)
     | _ -> None
+  in Location.register_error_of_exn handler
+
 
 let get_side () = (!side : shside :> [>shside])
 let change_side = function

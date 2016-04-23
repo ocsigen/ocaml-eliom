@@ -2280,7 +2280,7 @@ let rec unify (env:Env.t ref) t1 t2 =
   try
     type_changed := true;
     begin match (t1.desc, t2.desc) with
-    (* ELIOM
+    (* ELIOM TODO
        Test if unifying between a client and a server type, and do
        something special there.
     *)

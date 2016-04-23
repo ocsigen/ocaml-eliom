@@ -1,3 +1,4 @@
+[@@@ocaml.warning "+a-4-9-40-42"]
 
 type side = [
   | `Client
