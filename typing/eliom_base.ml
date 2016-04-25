@@ -5,36 +5,42 @@ open Ast_helper
 type side = [
   | `Client
   | `Server
+  | `Shared
 ]
 
 type shside = [
   | side
-  | `Shared
+  | `Noside
 ]
 
 let to_string = function
   | `Server -> "server"
   | `Client -> "client"
   | `Shared -> "shared"
+  | `Noside -> "none"
 
-let conform (s1:shside) (s2:shside) = match s1, s2 with
+(** Check if identifier from side [id] can be used in scope [scope]. *)
+let conform ~(scope:shside) ~(id:shside) = match scope, id with
   | `Server, `Server
   | `Client, `Client
-  | `Shared, `Shared
-  | (`Server | `Client), `Shared
+  | (`Server | `Client | `Shared), `Shared
+  | _, `Noside
     -> true
-  | `Shared, (`Server | `Client)
   | `Client, `Server
-  | `Server, `Client -> false
+  | `Server, `Client
+  | `Shared, (`Server | `Client)
+  | `Noside, _
+    -> false
 
 let mirror = function
   | `Client -> `Server
   | `Server -> `Client
   | `Shared -> `Shared
+  | `Noside -> `Noside
 
 (** Handling of current side *)
 
-let side : shside ref = ref `Shared
+let side : shside ref = ref `Noside
 let get_side () = (!side : shside :> [>shside])
 let change_side = function
   | "server" -> side := `Server
@@ -72,7 +78,7 @@ let () =
 
 let check ~loc mk_error side message =
   let current_side = get_side () in
-  if not @@ conform current_side side then
+  if not @@ conform ~scope:current_side ~id:side then
     raise @@ mk_error @@
     Location.errorf ~loc
       "%s are only allowed in a %s context, \
@@ -97,6 +103,7 @@ let get_load_path () =
   | `Server -> !server_load_path
   | `Client -> !client_load_path
   | `Shared -> !Config.load_path
+  | `Noside -> !Config.load_path
 
 (** Utils *)
 

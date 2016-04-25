@@ -28,31 +28,29 @@ let side i =
   let s = (i.flags land server_flag) <> 0 in
   let c = (i.flags land client_flag) <> 0 in
   match s, c with
-  | false, false -> `Shared
+  | false, false -> `Noside
   | true , false -> `Server
   | false, true  -> `Client
-  (* This case should probably raise an error *)
   | true , true  -> `Shared
 
 let side_to_flag = function
   | `Server -> server_flag
   | `Client -> client_flag
-  | `Shared -> 0
+  | `Shared -> server_flag lor client_flag
+  | `Noside -> 0
 
 let show_side i = match side i with
-  | `Client -> "c"
-  | `Server -> "s"
-  | `Shared -> ""
+  | `Client -> "@c"
+  | `Server -> "@s"
+  | `Shared -> "@sh"
+  | `Noside -> ""
 
 let change_side s i =
-  if side i = `Shared then
-    match s with
-    | `Shared -> ()
-    | `Client | `Server ->
-        i.flags <-
-          i.flags
-          lor (side_to_flag s)
-          land (lnot @@ side_to_flag @@ Eliom_base.mirror s)
+  i.flags <-
+    i.flags
+    (* Take care of removing the symmetric, if necessary. *)
+    land (lnot @@ side_to_flag @@ Eliom_base.mirror s)
+    lor (side_to_flag s)
 
 (* /ELIOM *)
 

@@ -5,16 +5,19 @@
 type side = [
   | `Client
   | `Server
+  | `Shared
 ]
 
 type shside = [
   | side
-  | `Shared
+  | `Noside
 ]
 
 val to_string : [<shside] -> string
 
-val conform : shside -> shside -> bool
+(** [Check if identifier from side [id] can be used in scope [scope]. *)
+val conform : scope:shside -> id:shside -> bool
+
 val mirror : [<shside] -> [>shside]
 val check :
   loc:Location.t ->
@@ -22,10 +25,10 @@ val check :
 
 val in_side : [<shside] -> (unit -> 'a) -> 'a
 val get_side : unit -> [>shside]
-val change_side : string -> unit
 
 (** Handling of client/server load path. *)
 
+val change_side : string -> unit
 val set_load_path : client:string list -> server:string list -> unit
 val get_load_path : unit -> string list
 
@@ -46,5 +49,5 @@ end
 module Section : sig
   val check : Parsetree.structure_item -> bool
   val get : Parsetree.structure_item -> (side * Parsetree.structure_item)
-  val attr : [<shside] -> Location.t -> Parsetree.attribute
+  val attr : [<side] -> Location.t -> Parsetree.attribute
 end

@@ -104,7 +104,8 @@ module Error_msg = struct
      same side as the current scope.
   *)
   let filter_add side name path l = match path with
-    | Some path when Eliom_base.conform (Ident.side @@ Path.head path) side
+    | Some path when
+        Eliom_base.conform ~scope:side ~id:(Ident.side @@ Path.head path)
       -> name::l
     | _ -> l
 
@@ -116,7 +117,8 @@ module Error_msg = struct
     let aux name path acc = match path with
       | Some path ->
           let pside = Ident.side @@ Path.head path in
-          if Eliom_base.conform pside mside && name = s then raise (FoundIn pside)
+          if Eliom_base.conform ~scope:pside ~id:mside && name = s
+          then raise (FoundIn pside)
           else acc
       | None -> acc
     in

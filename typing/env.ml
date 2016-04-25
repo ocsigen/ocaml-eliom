@@ -489,7 +489,7 @@ let find_pers_struct check name =
       let filename, side =
         try
           let l = !load_path in
-          find_in_path_uncap l (name ^ ".cmi"), `Shared
+          find_in_path_uncap l (name ^ ".cmi"), `Noside
         with Not_found -> try
             let l = Eliom_base.get_load_path () in
             let side = Eliom_base.get_side () in
