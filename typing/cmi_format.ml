@@ -66,6 +66,11 @@ let read_cmi filename =
     end;
     let cmi = input_cmi ic in
     close_in ic;
+    (* ELIOM *)
+    if buffer = Eliom_types.cmi_magic_number
+    then Eliom_types.translate cmi.cmi_sign
+    else () ;
+    (* /ELIOM *)
     cmi
   with End_of_file | Failure _ ->
       close_in ic;

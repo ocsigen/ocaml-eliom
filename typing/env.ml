@@ -397,7 +397,6 @@ let read_pers_struct check modname filename =
   let cmi = read_cmi filename in
   let name = cmi.cmi_name in
   let sign = cmi.cmi_sign in
-  (* ELIOM *) Eliom_types.translate sign ;
   let crcs = cmi.cmi_crcs in
   let flags = cmi.cmi_flags in
   let deprecated =
