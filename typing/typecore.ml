@@ -138,10 +138,12 @@ let iter_expression f e =
     f e;
     match e.pexp_desc with
     (* ELIOM *)
-    | _ when Eliom_base.is_fragment e ->
+    | _ when Eliom_base.Fragment.check e ->
         Eliom_base.in_side `Client @@ fun () ->
-        f @@ Eliom_base.get_fragment e
-    | _ when Eliom_base.is_injection e -> ()
+        f @@ Eliom_base.Fragment.get e
+    | _ when Eliom_base.Injection.check e ->
+        Eliom_base.in_side `Server @@ fun () ->
+        f @@ Eliom_base.Injection.get e
     (* /ELIOM *)
     | Pexp_extension _ (* we don't iterate under extension point *)
     | Pexp_ident _
@@ -201,8 +203,8 @@ let iter_expression f e =
   and structure_item str =
     match str.pstr_desc with
     (* ELIOM *)
-    | _ when Eliom_base.is_section str ->
-        let side, str = Eliom_base.get_section str in
+    | _ when Eliom_base.Section.check str ->
+        let side, str = Eliom_base.Section.get str in
         Eliom_base.in_side side @@ fun () -> structure_item str
     (* /ELIOM *)
     | Pstr_eval (e, _) -> expr e
@@ -1986,12 +1988,12 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
   in
   match sexp.pexp_desc with
   (* ELIOM *)
-  | _ when Eliom_base.is_fragment sexp ->
+  | _ when Eliom_base.Fragment.check sexp ->
       (* Check that we are indeed on the server. *)
       Eliom_base.check ~loc (fun e -> Error_forward e)
         `Server "Fragments" ;
       (* Follow Pexp_lazy *)
-      let e = Eliom_base.get_fragment sexp in
+      let e = Eliom_base.Fragment.get sexp in
       let ty = Eliom_base.in_side `Client @@ fun () -> newgenvar () in
       let to_unify = Predef.type_fragment ty in
       Eliom_base.in_side `Client @@ fun () ->
@@ -2005,22 +2007,22 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
         exp_loc = loc;
         exp_type = instance env ty_expected;
         exp_attributes =
-          Eliom_base.fragment_attr loc :: sexp.pexp_attributes @
+          Eliom_base.Fragment.attr loc :: sexp.pexp_attributes @
             new_exp.exp_attributes ;
         exp_env = env;
       }
-  | _ when Eliom_base.is_injection sexp ->
+  | _ when Eliom_base.Injection.check sexp ->
       (* Check that we are indeed on the client. *)
       Eliom_base.check ~loc (fun e -> Error_forward e)
         `Client "Injections" ;
-      let e = Eliom_base.get_injection sexp in
+      let e = Eliom_base.Injection.get sexp in
       let new_exp = type_injection env e ty_expected in
       re {
         new_exp with
         exp_loc = loc;
         exp_type = instance env ty_expected;
         exp_attributes =
-          Eliom_base.injection_attr loc :: sexp.pexp_attributes @
+          Eliom_base.Injection.attr loc :: sexp.pexp_attributes @
             new_exp.exp_attributes ;
         exp_env = env;
       }

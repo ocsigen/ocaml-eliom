@@ -1210,9 +1210,9 @@ and type_structure ?(toplevel = false) funct_body anchor env sstr scope =
   let rec type_str_item env srem ({pstr_loc = loc; pstr_desc = desc} as stri) =
     match desc with
     (* ELIOM *)
-    | _ when Eliom_base.is_section stri ->
-        let side, stri = Eliom_base.get_section stri in
-        let attr = Eliom_base.section_attr side loc in
+    | _ when Eliom_base.Section.check stri ->
+        let side, stri = Eliom_base.Section.get stri in
+        let attr = Eliom_base.Section.attr side loc in
         Eliom_base.in_side side @@ fun () ->
         let tmod, tsig, env = type_str_item env srem stri in
         let open Eliom_typing.Tast_helper in

@@ -35,7 +35,19 @@ let mirror = function
 (** Handling of current side *)
 
 let side : shside ref = ref `Shared
+let get_side () = (!side : shside :> [>shside])
+let change_side = function
+  | "server" -> side := `Server
+  | "client" -> side := `Client
+  | "shared" -> side := `Shared
+  | _ -> ()
 
+
+(** In order to report exceptions with the proper scope, we wrap exceptions
+    that cross side boundaries with a side annotation.
+
+    The handling mechanism in {!Location} unwraps the exception transparently.
+*)
 exception Error of (shside * exn)
 
 let in_side new_side body =
@@ -47,9 +59,6 @@ let in_side new_side body =
    with e ->
      let e' : exn = Error (!side, e) in
      side := old_side;
-     (* We leak the side on purpose, allow better error reporting.
-        In the type checker, exceptions seems not used for control flow
-        that could break around in_side *)
      raise e'
 
 let () =
@@ -60,12 +69,6 @@ let () =
   in Location.register_error_of_exn handler
 
 
-let get_side () = (!side : shside :> [>shside])
-let change_side = function
-  | "server" -> side := `Server
-  | "client" -> side := `Client
-  | "shared" -> side := `Shared
-  | _ -> ()
 
 let check ~loc mk_error side message =
   let current_side = get_side () in
@@ -78,6 +81,8 @@ let check ~loc mk_error side message =
       (to_string side)
       (to_string current_side)
   else ()
+
+(** Load path utilities *)
 
 let client_load_path = ref []
 let server_load_path = ref []
@@ -94,6 +99,7 @@ let get_load_path () =
   | `Shared -> !Config.load_path
 
 (** Utils *)
+
 let exp_add_attr ~attrs e =
   {e with pexp_attributes = attrs @ e.pexp_attributes}
 
@@ -106,70 +112,89 @@ let exp_error ?sub ~loc = error Exp.extension ?sub ~loc
 let str_error ?sub ~loc = error Str.extension ?sub ~loc
 (* let sig_error ?sub ~loc = error Sig.extension ?sub ~loc *)
 
-let fragment_name = "eliom.fragment"
-
-let is_fragment e = match e.pexp_desc with
-  | Pexp_extension ({txt},payload) when txt = fragment_name ->
-      begin match payload with
-      | PStr [{pstr_desc = Pstr_eval (_e,_attrs)}] -> true
-      | _ -> false (* TODO: Report error *)
-      end
-  | _ -> false
-
-let get_fragment e = match e.pexp_desc with
-  | Pexp_extension ({txt},PStr [{pstr_desc = Pstr_eval (e,attrs)}])
-    when txt = fragment_name -> exp_add_attr ~attrs e
-  | _ -> exp_error ~loc:e.pexp_loc "Eliom: Not a fragment."
+let is_annotation ~txt base =
+  txt = base || txt = ("eliom."^base)
 
 
-let injection_op = "~%"
-let injection_name = "eliom.injection"
+(** Parsetree inspection and emission. *)
 
-let is_injection e = match e.pexp_desc with
-  | Pexp_apply ({pexp_desc = Pexp_ident {txt}}, args)
-    when txt = Longident.Lident injection_op ->
-      begin match args with
-      | [Nolabel, _] -> true
-      | _ -> false (* TODO: Report error *)
-      end
-  | _ -> false
+module Fragment = struct
 
-let get_injection e =  match e.pexp_desc with
-  | Pexp_apply ({pexp_desc=Pexp_ident {txt}}, [Nolabel, e])
-    when txt = Longident.Lident injection_op -> e
-  | _ -> exp_error ~loc:e.pexp_loc "Eliom: Not an injection."
+  let name = "eliom.client"
+  let attr loc = ({Location.txt=name; loc},PStr [])
 
-let client_section = "eliom.client"
-let server_section = "eliom.server"
-let shared_section = "eliom.shared"
+  let check e = match e.pexp_desc with
+    | Pexp_extension ({txt},payload) when is_annotation ~txt name ->
+        begin match payload with
+        | PStr [{pstr_desc = Pstr_eval (_e,_attrs)}] -> true
+        | _ -> false (* TODO: Report error *)
+        end
+    | _ -> false
 
-let is_section e = match e.pstr_desc with
-  | Pstr_extension (({Location.txt},payload),_)
-    when txt = client_section || txt = server_section ->
-      begin match payload with
-      | PStr [_str] -> true
-      | _ -> false (* TODO: Report error *)
-      end
-  | _ -> false
+  let get e = match e.pexp_desc with
+    | Pexp_extension ({txt},PStr [{pstr_desc = Pstr_eval (e,attrs)}])
+      when txt = name -> exp_add_attr ~attrs e
+    | _ -> exp_error ~loc:e.pexp_loc "Eliom: Not a fragment."
 
-let get_section e = match e.pstr_desc with
-  | Pstr_extension (({Location.txt},PStr [str]),_)
-    when txt = client_section -> (`Client, str)
-  | Pstr_extension (({Location.txt},PStr [str]),_)
-    when txt = server_section -> (`Server, str)
-  (* TODO : Drop attributes *)
-  | _ -> (`Server, str_error ~loc:e.pstr_loc "Eliom: Not a section")
+end
 
 
-let fragment = Longident.parse "Eliom_runtime.fragment"
+module Injection = struct
 
-let fragment_attr loc = ({Location.txt=fragment_name; loc},PStr [])
+  let op = "~%"
 
-let injection_attr loc = ({Location.txt=injection_name; loc},PStr [])
+  let check e = match e.pexp_desc with
+    | Pexp_apply ({pexp_desc = Pexp_ident {txt}}, args)
+      when txt = Longident.Lident op ->
+        begin match args with
+        | [Nolabel, _] -> true
+        | _ -> false (* TODO: Report error *)
+        end
+    | _ -> false
 
-let section_attr side loc =
-  let txt = match side with
-    | `Client -> client_section
-    | `Server -> server_section
-    | `Shared -> shared_section
-  in ({Location.txt; loc},PStr [])
+  let get e =  match e.pexp_desc with
+    | Pexp_apply ({pexp_desc=Pexp_ident {txt}}, [Nolabel, e])
+      when txt = Longident.Lident op -> e
+    | _ -> exp_error ~loc:e.pexp_loc "Eliom: Not an injection."
+
+
+  let name = "eliom.injection"
+  let attr loc = ({Location.txt=name; loc},PStr [])
+
+end
+
+module Section = struct
+
+  let client = "client"
+  let server = "server"
+  let shared = "shared"
+
+  let check e = match e.pstr_desc with
+    | Pstr_extension (({Location.txt},payload),_)
+      when is_annotation ~txt client ||
+           is_annotation ~txt server ||
+           is_annotation ~txt shared ->
+        begin match payload with
+        | PStr [_str] -> true
+        | _ -> false (* TODO: Report error *)
+        end
+    | _ -> false
+
+  let get e = match e.pstr_desc with
+    | Pstr_extension (({Location.txt},PStr [str]),_)
+      when is_annotation ~txt client -> (`Client, str)
+    | Pstr_extension (({Location.txt},PStr [str]),_)
+      when is_annotation ~txt server -> (`Server, str)
+    | Pstr_extension (({Location.txt},PStr [str]),_)
+      when is_annotation ~txt shared -> (`Shared, str)
+    (* TODO : Drop attributes *)
+    | _ -> (`Server, str_error ~loc:e.pstr_loc "Eliom: Not a section")
+
+  let attr side loc =
+    let txt = match side with
+      | `Client -> client
+      | `Server -> server
+      | `Shared -> shared
+    in ({Location.txt; loc},PStr [])
+
+end
