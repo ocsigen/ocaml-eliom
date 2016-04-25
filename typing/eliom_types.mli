@@ -1,4 +1,7 @@
+[@@@ocaml.warning "+a-4-9-40-42"]
 
 val cmi_magic_number : string
 
-val is_mixed : Types.signature_item list -> bool
+val translate : Types.signature -> unit
+
+val is_mixed : Types.signature -> bool
