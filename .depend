@@ -151,8 +151,8 @@ typing/cmt_format.cmi : typing/types.cmi typing/typedtree.cmi \
 typing/ctype.cmi : typing/types.cmi typing/path.cmi parsing/longident.cmi \
     typing/ident.cmi typing/env.cmi parsing/asttypes.cmi
 typing/datarepr.cmi : typing/types.cmi typing/path.cmi typing/ident.cmi
-typing/eliom_base.cmi : parsing/parsetree.cmi parsing/longident.cmi \
-    parsing/location.cmi
+typing/eliom_base.cmi : parsing/parsetree.cmi parsing/location.cmi
+typing/eliom_types.cmi : typing/types.cmi
 typing/eliom_typing.cmi : typing/types.cmi typing/typedtree.cmi \
     typing/path.cmi parsing/parsetree.cmi typing/env.cmi \
     typing/eliom_base.cmi
@@ -220,9 +220,9 @@ typing/btype.cmo : typing/types.cmi typing/path.cmi utils/misc.cmi \
 typing/btype.cmx : typing/types.cmx typing/path.cmx utils/misc.cmx \
     typing/ident.cmx parsing/asttypes.cmi typing/btype.cmi
 typing/cmi_format.cmo : typing/types.cmi parsing/location.cmi \
-    utils/config.cmi typing/cmi_format.cmi
+    typing/eliom_types.cmi utils/config.cmi typing/cmi_format.cmi
 typing/cmi_format.cmx : typing/types.cmx parsing/location.cmx \
-    utils/config.cmx typing/cmi_format.cmi
+    typing/eliom_types.cmx utils/config.cmx typing/cmi_format.cmi
 typing/cmt_format.cmo : typing/types.cmi typing/typedtree.cmi \
     typing/tast_mapper.cmi utils/misc.cmi parsing/location.cmi \
     parsing/lexer.cmi typing/env.cmi utils/config.cmi typing/cmi_format.cmi \
@@ -251,6 +251,12 @@ typing/eliom_base.cmo : parsing/parsetree.cmi parsing/longident.cmi \
 typing/eliom_base.cmx : parsing/parsetree.cmi parsing/longident.cmx \
     parsing/location.cmx utils/config.cmx parsing/ast_mapper.cmx \
     parsing/ast_helper.cmx typing/eliom_base.cmi
+typing/eliom_types.cmo : typing/types.cmi typing/path.cmi typing/ident.cmi \
+    typing/eliom_base.cmi utils/config.cmi typing/btype.cmi \
+    typing/eliom_types.cmi
+typing/eliom_types.cmx : typing/types.cmx typing/path.cmx typing/ident.cmx \
+    typing/eliom_base.cmx utils/config.cmx typing/btype.cmx \
+    typing/eliom_types.cmi
 typing/eliom_typing.cmo : typing/types.cmi typing/typedtree.cmi \
     typing/path.cmi parsing/longident.cmi typing/ident.cmi typing/env.cmi \
     typing/eliom_base.cmi typing/btype.cmi typing/eliom_typing.cmi
