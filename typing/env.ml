@@ -163,6 +163,8 @@ module EnvTbl =
     let keys tbl = Ident.fold_all (fun k _ accu -> k::accu) tbl []
   end
 
+module STbl = Misc.StringMap
+
 type type_descriptions =
     constructor_description list * label_description list
 
@@ -198,17 +200,17 @@ and module_components_repr =
   | Functor_comps of functor_components
 
 and structure_components = {
-  mutable comp_values: (string, (value_description * int)) Tbl.t;
-  mutable comp_constrs: (string, (constructor_description * int) list) Tbl.t;
-  mutable comp_labels: (string, (label_description * int) list) Tbl.t;
+  mutable comp_values: (value_description * int) STbl.t;
+  mutable comp_constrs: ((constructor_description * int) list) STbl.t;
+  mutable comp_labels: ((label_description * int) list) STbl.t;
   mutable comp_types:
-   (string, ((type_declaration * type_descriptions) * int)) Tbl.t;
+   ((type_declaration * type_descriptions) * int) STbl.t;
   mutable comp_modules:
-   (string, ((Subst.t * Types.module_type,module_type) EnvLazy.t * int)) Tbl.t;
-  mutable comp_modtypes: (string, (modtype_declaration * int)) Tbl.t;
-  mutable comp_components: (string, (module_components * int)) Tbl.t;
-  mutable comp_classes: (string, (class_declaration * int)) Tbl.t;
-  mutable comp_cltypes: (string, (class_type_declaration * int)) Tbl.t
+   ((Subst.t * Types.module_type,module_type) EnvLazy.t * int) STbl.t;
+  mutable comp_modtypes: (modtype_declaration * int) STbl.t;
+  mutable comp_components: (module_components * int) STbl.t;
+  mutable comp_classes: (class_declaration * int) STbl.t;
+  mutable comp_cltypes: (class_type_declaration * int) STbl.t
 }
 
 and functor_components = {
@@ -547,7 +549,7 @@ let rec find_module_descr path env =
   | Pdot(p, s, pos) ->
       begin match get_components (find_module_descr p env) with
         Structure_comps c ->
-          let (descr, pos) = Tbl.find s c.comp_components in
+          let (descr, pos) = STbl.find s c.comp_components in
           descr
       | Functor_comps f ->
          raise Not_found
@@ -568,7 +570,7 @@ let find proj1 proj2 path env =
   | Pdot(p, s, pos) ->
       begin match get_components (find_module_descr p env) with
         Structure_comps c ->
-          let (data, pos) = Tbl.find s (proj2 c) in data
+          let (data, pos) = STbl.find s (proj2 c) in data
       | Functor_comps f ->
           raise Not_found
       end
@@ -624,7 +626,7 @@ let find_type_full path env =
       let exts =
         List.filter
           (function ({cstr_tag=Cstr_extension _}, _) -> true | _ -> false)
-          (try Tbl.find s comps.comp_constrs
+          (try STbl.find s comps.comp_constrs
            with Not_found -> assert false)
       in
       match exts with
@@ -653,7 +655,7 @@ let find_module ~alias path env =
   | Pdot(p, s, pos) ->
       begin match get_components (find_module_descr p env) with
         Structure_comps c ->
-          let (data, pos) = Tbl.find s c.comp_modules in
+          let (data, pos) = STbl.find s c.comp_modules in
           md (EnvLazy.force subst_modtype_maker data)
       | Functor_comps f ->
           raise Not_found
@@ -799,7 +801,7 @@ let rec lookup_module_descr_aux ?loc lid env =
       let (p, descr) = lookup_module_descr ?loc l env in
       begin match get_components descr with
         Structure_comps c ->
-          let (descr, pos) = Tbl.find s c.comp_components in
+          let (descr, pos) = STbl.find s c.comp_components in
           (Pdot(p, s, pos), descr)
       | Functor_comps f ->
           raise Not_found
@@ -849,8 +851,8 @@ and lookup_module ~load ?loc lid env : Path.t =
       let (p, descr) = lookup_module_descr ?loc l env in
       begin match get_components descr with
         Structure_comps c ->
-          let (data, pos) = Tbl.find s c.comp_modules in
-          let (comps, _) = Tbl.find s c.comp_components in
+          let (data, pos) = STbl.find s c.comp_modules in
+          let (comps, _) = STbl.find s c.comp_components in
           let p = Pdot(p, s, pos) in
           report_deprecated ?loc p comps.deprecated;
           p
@@ -878,7 +880,7 @@ let lookup proj1 proj2 ?loc lid env =
       let (p, desc) = lookup_module_descr ?loc l env in
       begin match get_components desc with
         Structure_comps c ->
-          let (data, pos) = Tbl.find s (proj2 c) in
+          let (data, pos) = STbl.find s (proj2 c) in
           (Pdot(p, s, pos), data)
       | Functor_comps f ->
           raise Not_found
@@ -903,7 +905,7 @@ let lookup_all_simple proj1 proj2 shadow ?loc lid env =
       begin match get_components desc with
         Structure_comps c ->
           let comps =
-            try Tbl.find s (proj2 c) with Not_found -> []
+            try STbl.find s (proj2 c) with Not_found -> []
           in
           List.map
             (fun (data, pos) -> (data, (fun () -> ())))
@@ -1118,10 +1120,10 @@ let iter_env proj1 proj2 f env () =
       if not visit then () else
       match get_components mcomps with
         Structure_comps comps ->
-          Tbl.iter
+          STbl.iter
             (fun s (d, n) -> f (Pdot (path, s, n)) (Pdot (path', s, n), d))
             (proj2 comps);
-          Tbl.iter
+          STbl.iter
             (fun s (c, n) ->
               iter_components (Pdot (path, s, n)) (Pdot (path', s, n)) c)
             comps.comp_components
@@ -1161,7 +1163,7 @@ let find_all_comps proj s (p,mcomps) =
   match get_components mcomps with
     Functor_comps _ -> []
   | Structure_comps comps ->
-      try let (c,n) = Tbl.find s (proj comps) in [Pdot(p,s,n), c]
+      try let (c,n) = STbl.find s (proj comps) in [Pdot(p,s,n), c]
       with Not_found -> []
 
 let rec find_shadowed_comps path env =
@@ -1359,8 +1361,8 @@ let prefix_idents_and_subst root sub sg =
 
 let add_to_tbl id decl tbl =
   let decls =
-    try Tbl.find id tbl with Not_found -> [] in
-  Tbl.add id (decl :: decls) tbl
+    try STbl.find id tbl with Not_found -> [] in
+  STbl.add id (decl :: decls) tbl
 
 let rec components_of_module ~deprecated env sub path mty =
   {
@@ -1372,12 +1374,12 @@ and components_of_module_maker (env, sub, path, mty) =
   (match scrape_alias env mty with
     Mty_signature sg ->
       let c =
-        { comp_values = Tbl.empty;
-          comp_constrs = Tbl.empty;
-          comp_labels = Tbl.empty; comp_types = Tbl.empty;
-          comp_modules = Tbl.empty; comp_modtypes = Tbl.empty;
-          comp_components = Tbl.empty; comp_classes = Tbl.empty;
-          comp_cltypes = Tbl.empty } in
+        { comp_values = STbl.empty;
+          comp_constrs = STbl.empty;
+          comp_labels = STbl.empty; comp_types = STbl.empty;
+          comp_modules = STbl.empty; comp_modtypes = STbl.empty;
+          comp_components = STbl.empty; comp_classes = STbl.empty;
+          comp_cltypes = STbl.empty } in
       let pl, sub, _ = prefix_idents_and_subst path sub sg in
       let env = ref env in
       let pos = ref 0 in
@@ -1386,7 +1388,7 @@ and components_of_module_maker (env, sub, path, mty) =
           Sig_value(id, decl) ->
             let decl' = Subst.value_description sub decl in
             c.comp_values <-
-              Tbl.add (Ident.name id) (decl', !pos) c.comp_values;
+              STbl.add (Ident.name id) (decl', !pos) c.comp_values;
             begin match decl.val_kind with
               Val_prim _ -> () | _ -> incr pos
             end
@@ -1397,7 +1399,7 @@ and components_of_module_maker (env, sub, path, mty) =
             let labels =
               List.map snd (Datarepr.labels_of_type path decl') in
             c.comp_types <-
-              Tbl.add (Ident.name id)
+              STbl.add (Ident.name id)
                 ((decl', (constructors, labels)), nopos)
                   c.comp_types;
             List.iter
@@ -1421,29 +1423,29 @@ and components_of_module_maker (env, sub, path, mty) =
             let mty = md.md_type in
             let mty' = EnvLazy.create (sub, mty) in
             c.comp_modules <-
-              Tbl.add (Ident.name id) (mty', !pos) c.comp_modules;
+              STbl.add (Ident.name id) (mty', !pos) c.comp_modules;
             let deprecated =
               Builtin_attributes.deprecated_of_attrs md.md_attributes
             in
             let comps = components_of_module ~deprecated !env sub path mty in
             c.comp_components <-
-              Tbl.add (Ident.name id) (comps, !pos) c.comp_components;
+              STbl.add (Ident.name id) (comps, !pos) c.comp_components;
             env := store_module None id (Pident id) md !env !env;
             incr pos
         | Sig_modtype(id, decl) ->
             let decl' = Subst.modtype_declaration sub decl in
             c.comp_modtypes <-
-              Tbl.add (Ident.name id) (decl', nopos) c.comp_modtypes;
+              STbl.add (Ident.name id) (decl', nopos) c.comp_modtypes;
             env := store_modtype None id (Pident id) decl !env !env
         | Sig_class(id, decl, _) ->
             let decl' = Subst.class_declaration sub decl in
             c.comp_classes <-
-              Tbl.add (Ident.name id) (decl', !pos) c.comp_classes;
+              STbl.add (Ident.name id) (decl', !pos) c.comp_classes;
             incr pos
         | Sig_class_type(id, decl, _) ->
             let decl' = Subst.cltype_declaration sub decl in
             c.comp_cltypes <-
-              Tbl.add (Ident.name id) (decl', !pos) c.comp_cltypes)
+              STbl.add (Ident.name id) (decl', !pos) c.comp_cltypes)
         sg pl;
         Structure_comps c
   | Mty_functor(param, ty_arg, ty_res) ->
@@ -1458,13 +1460,13 @@ and components_of_module_maker (env, sub, path, mty) =
   | Mty_ident _
   | Mty_alias _ ->
         Structure_comps {
-          comp_values = Tbl.empty;
-          comp_constrs = Tbl.empty;
-          comp_labels = Tbl.empty;
-          comp_types = Tbl.empty;
-          comp_modules = Tbl.empty; comp_modtypes = Tbl.empty;
-          comp_components = Tbl.empty; comp_classes = Tbl.empty;
-          comp_cltypes = Tbl.empty })
+          comp_values = STbl.empty;
+          comp_constrs = STbl.empty;
+          comp_labels = STbl.empty;
+          comp_types = STbl.empty;
+          comp_modules = STbl.empty; comp_modtypes = STbl.empty;
+          comp_components = STbl.empty; comp_classes = STbl.empty;
+          comp_cltypes = STbl.empty })
 
 (* Insertion of bindings by identifier + path *)
 
@@ -1881,7 +1883,7 @@ let find_all proj1 proj2 f lid env acc =
       let p, desc = lookup_module_descr l env in
       begin match get_components desc with
           Structure_comps c ->
-            Tbl.fold
+            STbl.fold
               (fun s (data, pos) acc -> f s (Pdot (p, s, pos)) data acc)
               (proj2 c) acc
         | Functor_comps _ ->
@@ -1898,7 +1900,7 @@ let find_all_simple_list proj1 proj2 f lid env acc =
       let p, desc = lookup_module_descr l env in
       begin match get_components desc with
           Structure_comps c ->
-            Tbl.fold
+            STbl.fold
               (fun s comps acc ->
                 match comps with
                   [] -> acc
@@ -1931,7 +1933,7 @@ let fold_modules f lid env acc =
       let p, desc = lookup_module_descr l env in
       begin match get_components desc with
           Structure_comps c ->
-            Tbl.fold
+            STbl.fold
               (fun s (data, pos) acc ->
                 f s (Pdot (p, s, pos))
                     (md (EnvLazy.force subst_modtype_maker data)) acc)
