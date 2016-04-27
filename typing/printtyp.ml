@@ -1223,7 +1223,26 @@ and tree_of_signature_rec env' in_type_group = function
       let env' = Env.add_signature (item :: sg) env' in
       trees @ tree_of_signature_rec env' in_type_group rem
 
-and trees_of_sigitem = function
+(* ELIOM *)
+and trees_of_sigitem sigi =
+  let side = match sigi with
+    | Sig_value(id, _)
+    | Sig_type(id, _, _)
+    | Sig_typext(id, _, _)
+    | Sig_module(id, _, _)
+    | Sig_modtype(id, _)
+    | Sig_class(id, _, _)
+    | Sig_class_type(id, _, _)
+      -> Ident.side id
+  in
+  let f l = match side with
+    | `Noside -> l
+    | #Eliom_base.side as side -> List.map (fun x -> Osig_side (side, x)) l
+  in
+  f @@ real_trees_of_sigitem sigi
+
+and real_trees_of_sigitem = function
+(* /ELIOM *)
   | Sig_value(id, decl) ->
       [tree_of_value_description id decl]
   | Sig_type(id, _, _) when is_row_name (Ident.name id) ->

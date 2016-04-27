@@ -100,6 +100,9 @@ and out_sig_item =
   | Osig_type of out_type_decl * out_rec_status
   | Osig_value of out_val_decl
   | Osig_ellipsis
+  (* ELIOM *)
+  | Osig_side of Eliom_base.side * out_sig_item
+  (* /ELIOM *)
 and out_type_decl =
   { otype_name: string;
     otype_params: (string * (bool * bool)) list;

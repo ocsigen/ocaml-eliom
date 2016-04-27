@@ -416,40 +416,49 @@ and print_out_signature ppf =
         fprintf ppf "%a@ %a" !out_type_extension te print_out_signature items
   | item :: items ->
       fprintf ppf "%a@ %a" !out_sig_item item print_out_signature items
-and print_out_sig_item ppf =
-  function
+(* ELIOM *)
+and side_to_string = function
+  | `Client -> "%client"
+  | `Server -> "%server"
+  | `Shared -> "%shared"
+  | `Noside -> ""
+and print_out_sig_item ppf sigi =
+  let side = side_to_string (Eliom_base.get_side ()) in
+  match sigi with
+(* /ELIOM *)
     Osig_class (vir_flag, name, params, clt, rs) ->
       fprintf ppf "@[<2>%s%s@ %a%s@ :@ %a@]"
-        (if rs = Orec_next then "and" else "class")
+        (if rs = Orec_next then "and" else "class"^side (*ELIOM*) )
         (if vir_flag then " virtual" else "") print_out_class_params params
         name !out_class_type clt
   | Osig_class_type (vir_flag, name, params, clt, rs) ->
       fprintf ppf "@[<2>%s%s@ %a%s@ =@ %a@]"
-        (if rs = Orec_next then "and" else "class type")
+        (if rs = Orec_next then "and" else "class type"^side (*ELIOM*) )
         (if vir_flag then " virtual" else "") print_out_class_params params
         name !out_class_type clt
   | Osig_typext (ext, Oext_exception) ->
-      fprintf ppf "@[<2>exception %a@]"
+      fprintf ppf "@[<2>exception%s %a@]"
+        side (* ELIOM *)
         print_out_constr (ext.oext_name, ext.oext_args, ext.oext_ret_type)
   | Osig_typext (ext, es) ->
       print_out_extension_constructor ppf ext
   | Osig_modtype (name, Omty_abstract) ->
-      fprintf ppf "@[<2>module type %s@]" name
+      fprintf ppf "@[<2>module type%s %s@]" side (* ELIOM *)  name
   | Osig_modtype (name, mty) ->
-      fprintf ppf "@[<2>module type %s =@ %a@]" name !out_module_type mty
+      fprintf ppf "@[<2>module type%s %s =@ %a@]" side (* ELIOM *) name !out_module_type mty
   | Osig_module (name, Omty_alias id, _) ->
-      fprintf ppf "@[<2>module %s =@ %a@]" name print_ident id
+      fprintf ppf "@[<2>module%s %s =@ %a@]" side (* ELIOM *) name print_ident id
   | Osig_module (name, mty, rs) ->
       fprintf ppf "@[<2>%s %s :@ %a@]"
-        (match rs with Orec_not -> "module"
-                     | Orec_first -> "module rec"
+        (match rs with Orec_not -> "module"^side (*ELIOM*)
+                     | Orec_first -> "module"^side (*ELIOM*)^ " rec"
                      | Orec_next -> "and")
         name !out_module_type mty
   | Osig_type(td, rs) ->
         print_out_type_decl
           (match rs with
-           | Orec_not   -> "type nonrec"
-           | Orec_first -> "type"
+           | Orec_not   -> "type"^side (*ELIOM*) ^" nonrec"
+           | Orec_first -> "type"^side (*ELIOM*)
            | Orec_next  -> "and")
           ppf td
   | Osig_value vd ->
@@ -461,12 +470,14 @@ and print_out_sig_item ppf =
             fprintf ppf "@ = \"%s\"" s;
             List.iter (fun s -> fprintf ppf "@ \"%s\"" s) sl
       in
-      fprintf ppf "@[<2>%s %a :@ %a%a%a@]" kwd value_ident vd.oval_name
+      fprintf ppf "@[<2>%s%s %a :@ %a%a%a@]" kwd side value_ident vd.oval_name
         !out_type vd.oval_type pr_prims vd.oval_prims
         (fun ppf -> List.iter (fun a -> fprintf ppf "@ [@@@@%s]" a.oattr_name))
         vd.oval_attributes
   | Osig_ellipsis ->
       fprintf ppf "..."
+  | Osig_side (side, sigi) ->
+      Eliom_base.in_side side @@ fun () -> print_out_sig_item ppf sigi
 
 and print_out_type_decl kwd ppf td =
   let print_constraints ppf =
