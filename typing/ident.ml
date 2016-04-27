@@ -122,8 +122,8 @@ let is_predef_exn i =
 
 let print ppf i =
   match i.stamp with
-  | 0 -> fprintf ppf "%s!" i.name
-  | -1 -> fprintf ppf "%s#" i.name
+  | 0 -> fprintf ppf "%s!%s" i.name (show_side i)
+  | -1 -> fprintf ppf "%s#%s" i.name (show_side i)
   | n -> fprintf ppf "%s/%i%s%s" i.name n (if global i then "g" else "") (show_side i)
 
 type 'a tbl =
