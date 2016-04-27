@@ -163,7 +163,18 @@ module EnvTbl =
     let keys tbl = Ident.fold_all (fun k _ accu -> k::accu) tbl []
   end
 
-module STbl = Misc.StringMap
+(* ELIOM *)
+module STbl = struct
+  type 'a t = 'a Ident.tbl
+  let find = Ident.find_name
+  let find_same = Ident.find_same
+  let iter f = Ident.iter (fun i -> f @@ Ident.name i)
+  let fold f =
+    Ident.fold_all (fun i -> f @@ Ident.name i)
+  let add = Ident.add
+  let empty = Ident.empty
+end
+(* /ELIOM *)
 
 type type_descriptions =
     constructor_description list * label_description list
@@ -1361,7 +1372,7 @@ let prefix_idents_and_subst root sub sg =
 
 let add_to_tbl id decl tbl =
   let decls =
-    try STbl.find id tbl with Not_found -> [] in
+    try STbl.find_same id tbl with Not_found -> [] in
   STbl.add id (decl :: decls) tbl
 
 let rec components_of_module ~deprecated env sub path mty =
@@ -1388,7 +1399,7 @@ and components_of_module_maker (env, sub, path, mty) =
           Sig_value(id, decl) ->
             let decl' = Subst.value_description sub decl in
             c.comp_values <-
-              STbl.add (Ident.name id) (decl', !pos) c.comp_values;
+              STbl.add id (decl', !pos) c.comp_values;
             begin match decl.val_kind with
               Val_prim _ -> () | _ -> incr pos
             end
@@ -1399,53 +1410,59 @@ and components_of_module_maker (env, sub, path, mty) =
             let labels =
               List.map snd (Datarepr.labels_of_type path decl') in
             c.comp_types <-
-              STbl.add (Ident.name id)
+              STbl.add id
                 ((decl', (constructors, labels)), nopos)
                   c.comp_types;
             List.iter
               (fun descr ->
                 c.comp_constrs <-
-                  add_to_tbl descr.cstr_name (descr, nopos) c.comp_constrs)
+                  (* ELIOM *)
+                  let cid = Ident.create_persistent ~side:(Ident.side id) descr.cstr_name in
+                  (* /ELIOM *)
+                  add_to_tbl cid (descr, nopos) c.comp_constrs)
               constructors;
             List.iter
               (fun descr ->
                 c.comp_labels <-
-                  add_to_tbl descr.lbl_name (descr, nopos) c.comp_labels)
+                  (* ELIOM *)
+                  let cid = Ident.create_persistent ~side:(Ident.side id) descr.lbl_name in
+                  (* /ELIOM *)
+                  add_to_tbl cid (descr, nopos) c.comp_labels)
               labels;
             env := store_type_infos None id (Pident id) decl !env !env
         | Sig_typext(id, ext, _) ->
             let ext' = Subst.extension_constructor sub ext in
             let descr = Datarepr.extension_descr path ext' in
             c.comp_constrs <-
-              add_to_tbl (Ident.name id) (descr, !pos) c.comp_constrs;
+              add_to_tbl id (descr, !pos) c.comp_constrs;
             incr pos
         | Sig_module(id, md, _) ->
             let mty = md.md_type in
             let mty' = EnvLazy.create (sub, mty) in
             c.comp_modules <-
-              STbl.add (Ident.name id) (mty', !pos) c.comp_modules;
+              STbl.add id (mty', !pos) c.comp_modules;
             let deprecated =
               Builtin_attributes.deprecated_of_attrs md.md_attributes
             in
             let comps = components_of_module ~deprecated !env sub path mty in
             c.comp_components <-
-              STbl.add (Ident.name id) (comps, !pos) c.comp_components;
+              STbl.add id (comps, !pos) c.comp_components;
             env := store_module None id (Pident id) md !env !env;
             incr pos
         | Sig_modtype(id, decl) ->
             let decl' = Subst.modtype_declaration sub decl in
             c.comp_modtypes <-
-              STbl.add (Ident.name id) (decl', nopos) c.comp_modtypes;
+              STbl.add id (decl', nopos) c.comp_modtypes;
             env := store_modtype None id (Pident id) decl !env !env
         | Sig_class(id, decl, _) ->
             let decl' = Subst.class_declaration sub decl in
             c.comp_classes <-
-              STbl.add (Ident.name id) (decl', !pos) c.comp_classes;
+              STbl.add id (decl', !pos) c.comp_classes;
             incr pos
         | Sig_class_type(id, decl, _) ->
             let decl' = Subst.cltype_declaration sub decl in
             c.comp_cltypes <-
-              STbl.add (Ident.name id) (decl', !pos) c.comp_cltypes)
+              STbl.add id (decl', !pos) c.comp_cltypes)
         sg pl;
         Structure_comps c
   | Mty_functor(param, ty_arg, ty_res) ->
