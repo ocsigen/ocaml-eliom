@@ -127,7 +127,7 @@ let is_annotation ~txt base =
 
 module Fragment = struct
 
-  let name = "eliom.client"
+  let name = "client"
   let attr loc = ({Location.txt=name; loc},PStr [])
 
   let check e = match e.pexp_desc with
@@ -165,7 +165,7 @@ module Injection = struct
     | _ -> exp_error ~loc:e.pexp_loc "Eliom: Not an injection."
 
 
-  let name = "eliom.injection"
+  let name = "injection"
   let attr loc = ({Location.txt=name; loc},PStr [])
 
 end
