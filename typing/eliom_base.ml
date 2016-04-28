@@ -117,7 +117,7 @@ let error f ?sub ?loc =
 
 let exp_error ?sub ~loc = error Exp.extension ?sub ~loc
 let str_error ?sub ~loc = error Str.extension ?sub ~loc
-(* let sig_error ?sub ~loc = error Sig.extension ?sub ~loc *)
+let sig_error ?sub ~loc = error Sig.extension ?sub ~loc
 
 let is_annotation ~txt base =
   txt = base || txt = ("eliom."^base)
@@ -196,6 +196,27 @@ module Section = struct
       when is_annotation ~txt shared -> (`Shared, str)
     (* TODO : Drop attributes *)
     | _ -> (`Server, str_error ~loc:e.pstr_loc "Eliom: Not a section")
+
+  let check_sig e = match e.psig_desc with
+    | Psig_extension (({Location.txt},payload),_)
+      when is_annotation ~txt client ||
+           is_annotation ~txt server ||
+           is_annotation ~txt shared ->
+        begin match payload with
+        | PSig _ -> true
+        | _ -> false (* TODO: Report error *)
+        end
+    | _ -> false
+
+  let get_sig e = match e.psig_desc with
+    | Psig_extension (({Location.txt},PSig l),_)
+      when is_annotation ~txt client -> (`Client, l)
+    | Psig_extension (({Location.txt},PSig l),_)
+      when is_annotation ~txt server -> (`Server, l)
+    | Psig_extension (({Location.txt},PSig l),_)
+      when is_annotation ~txt shared -> (`Shared, l)
+    (* TODO : Drop attributes *)
+    | _ -> (`Server, [sig_error ~loc:e.psig_loc "Eliom: Not a section"])
 
   let attr side loc =
     let txt = match side with

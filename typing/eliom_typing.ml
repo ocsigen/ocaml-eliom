@@ -1,30 +1,6 @@
 [@@@ocaml.warning "+a-4-9-40-42"]
 open Types
 
-(* Utilities *)
-
-(* module Build = struct *)
-
-(*   let exp ~env ?(attrs=[]) ?(loc=Location.none) desc ty = *)
-(*     { exp_desc = desc; exp_type = ty; *)
-(*       exp_loc  = loc; exp_extra = []; *)
-(*       exp_attributes = attrs; *)
-(*       exp_env  = env } *)
-
-(*   let exp_ident env name = *)
-(*     let lid     = Longident.parse name in *)
-(*     let (p, vd) = try Env.lookup_value lid env *)
-(*       with Not_found -> *)
-(*         Misc.fatal_error ("Trx.find_value: " ^ name) in *)
-(*     exp ~env (Texp_ident (p,mknoloc lid, vd)) *)
-(*       (Ctype.instance env vd.val_type) *)
-
-(*   let exp_apply : expression -> expression list -> expression_desc *)
-(*     = fun f args -> *)
-(*     Texp_apply(f, List.map (fun arg -> (Nolabel,Some arg)) args) *)
-
-(* end *)
-
 module Translate = struct
 
   let rec longident_of_path = function
@@ -131,7 +107,7 @@ module Error_msg = struct
 
 end
 
-module Tast_helper = struct
+module Tast = struct
   open! Typedtree
 
   let add_stri_attr attr = function
@@ -184,4 +160,41 @@ module Tast_helper = struct
         Sig_class (id,{cd with cty_attributes = attr :: cd.cty_attributes},rs)
     | Sig_class_type (id,ctd,rs) ->
         Sig_class_type (id,{ctd with clty_attributes = attr :: ctd.clty_attributes},rs)
+
+
+  let add_tsigi_attr_desc attr = function
+    | Tsig_value x ->
+        Tsig_value {x with val_attributes = attr :: x.val_attributes}
+    | Tsig_type (r,l) ->
+        Tsig_type (r,List.map
+            (fun x -> {x with typ_attributes = attr :: x.typ_attributes}) l)
+    | Tsig_typext tex ->
+        Tsig_typext {tex with tyext_attributes = attr :: tex.tyext_attributes}
+    | Tsig_exception exn ->
+        Tsig_exception {exn with ext_attributes = attr :: exn.ext_attributes}
+    | Tsig_module md ->
+        Tsig_module {md with md_attributes = attr :: md.md_attributes}
+    | Tsig_recmodule rmd ->
+        Tsig_recmodule (List.map
+            (fun (md : Typedtree.module_declaration) ->
+               {md with md_attributes = attr :: md.md_attributes}) rmd)
+    | Tsig_modtype mt ->
+        Tsig_modtype {mt with mtd_attributes = attr :: mt.mtd_attributes}
+    | Tsig_open op ->
+        Tsig_open {op with open_attributes = attr :: op.open_attributes}
+    | Tsig_include ic ->
+        Tsig_include {ic with incl_attributes = attr :: ic.incl_attributes}
+    | Tsig_class cls ->
+        Tsig_class (List.map
+            (fun cl -> {cl with ci_attributes = attr :: cl.ci_attributes}) cls)
+    | Tsig_class_type clt ->
+        Tsig_class_type (List.map
+            (fun cl -> {cl with ci_attributes = attr :: cl.ci_attributes})
+            clt)
+    | Tsig_attribute at ->
+        Tsig_attribute at
+
+  let add_tsigi_attr attr x =
+    {x with sig_desc = add_tsigi_attr_desc attr x.sig_desc}
+
 end

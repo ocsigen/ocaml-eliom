@@ -49,5 +49,7 @@ end
 module Section : sig
   val check : Parsetree.structure_item -> bool
   val get : Parsetree.structure_item -> (side * Parsetree.structure_item)
+  val check_sig : Parsetree.signature_item -> bool
+  val get_sig : Parsetree.signature_item -> (side * Parsetree.signature)
   val attr : [<side] -> Location.t -> Parsetree.attribute
 end

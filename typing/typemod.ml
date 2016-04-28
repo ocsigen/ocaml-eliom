@@ -577,6 +577,19 @@ and transl_signature env sg =
     | item :: srem ->
         let loc = item.psig_loc in
         match item.psig_desc with
+        (* ELIOM *)
+        | _ when Eliom_base.Section.check_sig item ->
+            let side, sign = Eliom_base.Section.get_sig item in
+            let attr = Eliom_base.Section.attr side loc in
+            let tsigi, sigi, newenv =
+              Eliom_base.in_side side @@ fun () ->
+              transl_sig env sign
+            in
+            let trem, rem, finalenv = transl_sig newenv srem in
+            (List.map (Eliom_typing.Tast.add_tsigi_attr attr) tsigi)@trem,
+            sigi@rem,
+            finalenv
+        (* /ELIOM *)
         | Psig_value sdesc ->
             let (tdesc, newenv) =
               Builtin_attributes.with_warning_attribute sdesc.pval_attributes
@@ -1215,7 +1228,7 @@ and type_structure ?(toplevel = false) funct_body anchor env sstr scope =
         let attr = Eliom_base.Section.attr side loc in
         Eliom_base.in_side side @@ fun () ->
         let tmod, tsig, env = type_str_item env srem stri in
-        let open Eliom_typing.Tast_helper in
+        let open Eliom_typing.Tast in
         add_stri_attr attr tmod, List.map (add_sigi_attr attr) tsig, env
     (* /ELIOM *)
     | Pstr_eval (sexpr, attrs) ->

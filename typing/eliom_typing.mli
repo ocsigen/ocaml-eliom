@@ -28,11 +28,15 @@ module Error_msg : sig
 end
 
 (** Like {!Ast_helper} but for Types/Typedtree. *)
-module Tast_helper : sig
+module Tast : sig
 
   val add_stri_attr :
     Typedtree.attribute ->
     Typedtree.structure_item_desc -> Typedtree.structure_item_desc
+
+  val add_tsigi_attr :
+    Parsetree.attribute ->
+    Typedtree.signature_item -> Typedtree.signature_item
 
   val add_sigi_attr :
     Parsetree.attribute ->
