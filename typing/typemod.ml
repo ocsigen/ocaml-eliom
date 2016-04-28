@@ -436,25 +436,39 @@ let check_recmod_typedecls env sdecls decls =
 
 (* Auxiliaries for checking uniqueness of names in signatures and structures *)
 
+(* ELIOM *)
+module SideSet = Set.Make(struct
+    type t = Eliom_base.shside * string
+    let compare (s1,name1) (s2,name2) =
+      match s1, s2 with
+      | _,_ when s1 = s2 -> compare name1 name2
+      | `Noside, _ | _, `Noside
+      | `Shared, _ | _, `Shared -> compare name1 name2
+      | _ -> compare s1 s2
+    let equal = (=)
+  end)
+(* /ELIOM *)
+
 let check cl loc set_ref name =
-  if StringSet.mem name !set_ref
+  let side = Eliom_base.get_side () in (* ELIOM *)
+  if SideSet.mem (side, name) !set_ref
   then raise(Error(loc, Env.empty, Repeated_name(cl, name)))
-  else set_ref := StringSet.add name !set_ref
+  else set_ref := SideSet.add (side, name) !set_ref
 
 type names =
   {
-    types: StringSet.t ref;
-    modules: StringSet.t ref;
-    modtypes: StringSet.t ref;
-    typexts: StringSet.t ref;
+    types: SideSet.t ref; (* ELIOM *)
+    modules: SideSet.t ref; (* ELIOM *)
+    modtypes: SideSet.t ref; (* ELIOM *)
+    typexts: SideSet.t ref; (* ELIOM *)
   }
 
 let new_names () =
   {
-    types = ref StringSet.empty;
-    modules = ref StringSet.empty;
-    modtypes = ref StringSet.empty;
-    typexts = ref StringSet.empty;
+    types = ref SideSet.empty; (* ELIOM *)
+    modules = ref SideSet.empty; (* ELIOM *)
+    modtypes = ref SideSet.empty; (* ELIOM *)
+    typexts = ref SideSet.empty; (* ELIOM *)
   }
 
 
