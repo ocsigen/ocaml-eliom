@@ -14,6 +14,7 @@ type shside = [
 ]
 
 val to_string : [<shside] -> string
+val pp : Format.formatter -> [<shside] -> unit
 
 (** [Check if identifier from side [id] can be used in scope [scope]. *)
 val conform : scope:shside -> id:shside -> bool

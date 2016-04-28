@@ -17,7 +17,8 @@ let to_string = function
   | `Server -> "server"
   | `Client -> "client"
   | `Shared -> "shared"
-  | `Noside -> "none"
+  | `Noside -> "base"
+let pp ppf x = Format.pp_print_string ppf (to_string x)
 
 (** Check if identifier from side [id] can be used in scope [scope]. *)
 let conform ~(scope:shside) ~(id:shside) = match scope, id with
