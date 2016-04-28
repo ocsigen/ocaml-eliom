@@ -161,6 +161,12 @@ let is_runtime_component = function
   | Sig_module(_,_,_)
   | Sig_class(_, _,_) -> true
 
+module Tbl = Map.Make(struct
+    type t = field_desc
+    let equal = (=)
+    let compare = compare
+  end)
+
 (* Print a coercion *)
 
 let rec print_list pr ppf = function
