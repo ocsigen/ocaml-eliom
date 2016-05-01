@@ -1319,6 +1319,12 @@ and type_structure ?(toplevel = false) funct_body anchor env sstr scope =
             md_loc = pmb_loc;
           }
         in
+        (* ELIOM *)
+        Includemod.Side.module_binding
+          {mb_id=id; mb_name=name; mb_expr=modl;
+           mb_attributes=attrs;  mb_loc=pmb_loc;
+          } ;
+        (* /ELIOM *)
         let newenv = Env.enter_module_declaration id md env in
         Tstr_module {mb_id=id; mb_name=name; mb_expr=modl;
                      mb_attributes=attrs;  mb_loc=pmb_loc;

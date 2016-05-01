@@ -42,6 +42,7 @@ type symptom =
   | Invalid_module_alias of Path.t
   (* ELIOM *)
   | Wrong_side of Ident.t * Location.t * string * (Ident.t * Location.t) list
+  | Side_inclusion of Ident.t * Location.t * string * Location.t * Eliom_base.shside
   (* /ELIOM *)
 
 type pos =
@@ -508,6 +509,73 @@ let modtypes env m1 m2 =
   c
 *)
 
+(* ELIOM *)
+(* Ensure proper inclusion of side, in order to prevent such code:
+
+    {|
+    module%client M = struct
+      let%server x = 3
+    end
+    |}
+*)
+module Side = struct
+
+  exception Side_error of Ident.t * Location.t * string
+
+  (** Contrary to Eliom_base.conform, this allows client/server inside shared
+      (and disallow the reverse).
+  *)
+  let check_inclusion ~scope ~decl = match scope, decl with
+    | `Shared, _
+    | `Server, `Server
+    | `Client, `Client
+    | _, `Noside
+      -> true
+    | _, `Shared
+    | `Client, `Server
+    | `Server, `Client
+    | `Noside, _
+      -> false
+
+  let check scope (id, loc, fdesc) =
+    if not @@ check_inclusion ~scope ~decl:(Ident.side id) then
+      let kind = kind_of_field_desc fdesc in
+      raise (Side_error (id, loc, kind))
+    else ()
+
+  let signature_item scope sigi =
+    check scope @@ item_ident_name sigi
+  let signature scope s = List.iter (signature_item scope) s
+
+  let rec module_type env side mty =
+    match mty with
+    | Mty_signature s -> signature side s
+    | Mty_ident p ->
+        module_type env side @@ expand_module_path env [] p
+    | Mty_alias p ->
+        module_type env side @@ expand_module_alias env [] p
+    | Mty_functor (id, None, mty) -> module_type env side mty
+    | Mty_functor (id, Some arg, mty) ->
+        module_type env side arg ;
+        module_type env side mty
+
+  let module_expr { mod_loc ; mod_type ; mod_env } =
+    let side = Eliom_base.get_side () in
+    try module_type mod_env side mod_type
+    with Side_error (id, loc, kind) ->
+      let err =  Side_inclusion (id, loc, kind, mod_loc, side) in
+      raise (Error [[], mod_env, err])
+
+  let module_binding { mb_id ; mb_loc ; mb_expr = { mod_type ; mod_env } } =
+    let side = Ident.side mb_id in
+    try module_type mod_env side mod_type
+    with Side_error (id, loc, kind) ->
+      let err =  Side_inclusion (id, loc, kind, mb_loc, side) in
+      raise (Error [[], mod_env, err])
+
+end
+(* /ELIOM *)
+
 (* Error report *)
 
 open Format
@@ -599,6 +667,14 @@ let include_err ppf = function
       ;
       show_loc "Expected declaration" ppf loc ;
       List.iter (fun (_,loc) -> show_loc "Actual declaration" ppf loc) other_decl
+  | Side_inclusion (id, loc, kind, modloc, scope) ->
+      fprintf ppf
+        "@[<hv 2>The %s `%s' is declared on \
+         %a side but was expected on %a side@]"
+        kind  (Ident.name id)
+        Eliom_base.pp (Ident.side id)  Eliom_base.pp scope ;
+      show_loc "Actual declaration" ppf loc ;
+      show_loc "Module definition" ppf modloc
   (* /ELIOM *)
 
 let rec context ppf = function

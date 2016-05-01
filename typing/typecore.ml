@@ -2823,6 +2823,9 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
       Ident.set_current_time ty.level;
       let context = Typetexp.narrow () in
       let modl = !type_module env smodl in
+      (* ELIOM *)
+      Includemod.Side.module_expr modl ;
+      (* /ELIOM *)
       let (id, new_env) = Env.enter_module name.txt modl.mod_type env in
       Ctype.init_def(Ident.current_time());
       Typetexp.widen context;
@@ -2988,6 +2991,9 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
             raise (Error (loc, env, Not_a_packed_module ty_expected))
       in
       let (modl, tl') = !type_package env m p nl tl in
+      (* ELIOM *)
+      Includemod.Side.module_expr modl ;
+      (* /ELIOM *)
       rue {
         exp_desc = Texp_pack modl;
         exp_loc = loc; exp_extra = [];

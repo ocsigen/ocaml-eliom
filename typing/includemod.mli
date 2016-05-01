@@ -49,6 +49,7 @@ type symptom =
   | Invalid_module_alias of Path.t
   (* ELIOM *)
   | Wrong_side of Ident.t * Location.t * string * (Ident.t * Location.t) list
+  | Side_inclusion of Ident.t * Location.t * string * Location.t * Eliom_base.shside
   (* /ELIOM *)
 
 type pos =
@@ -59,3 +60,10 @@ exception Error of error list
 
 val report_error: formatter -> error list -> unit
 val expand_module_alias: Env.t -> pos list -> Path.t -> Types.module_type
+
+
+(* ELIOM *)
+module Side : sig
+  val module_expr : Typedtree.module_expr -> unit
+  val module_binding : Typedtree.module_binding -> unit
+end
