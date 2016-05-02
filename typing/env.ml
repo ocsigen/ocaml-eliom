@@ -360,9 +360,6 @@ let persistent_structures =
 
 let crc_units = Consistbl.create()
 
-module StringSet =
-  Set.Make(struct type t = string let compare = String.compare end)
-
 let imported_units = ref StringSet.empty
 
 let add_import s =
