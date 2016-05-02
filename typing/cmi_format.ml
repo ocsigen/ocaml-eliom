@@ -67,11 +67,21 @@ let read_cmi filename =
     let cmi = input_cmi ic in
     close_in ic;
     (* ELIOM *)
+    let side =
+      if buffer = Eliom_types.cmi_magic_number then `Shared
+      else Eliom_base.get_side ()
+    in
+    (* We don't change sides inside the module if
+       - The module already has sides (ie. is an eliom cmi)
+       - The current side is Noside
+    *)
     if buffer = Eliom_types.cmi_magic_number
-    then Eliom_types.translate cmi.cmi_sign
-    else () ;
+    || Eliom_base.get_side () = `Noside
+    then ()
+    else Eliom_types.translate cmi.cmi_sign ;
     (* /ELIOM *)
     cmi
+    , side (* ELIOM *)
   with End_of_file | Failure _ ->
       close_in ic;
       raise(Error(Corrupted_interface(filename)))

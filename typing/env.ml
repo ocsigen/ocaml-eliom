@@ -407,7 +407,7 @@ let save_pers_struct crc ps =
 
 let read_pers_struct check modname filename =
   add_import modname;
-  let cmi = read_cmi filename in
+  let cmi, side(*ELIOM*) = read_cmi filename in
   let name = cmi.cmi_name in
   let sign = cmi.cmi_sign in
   let crcs = cmi.cmi_crcs in
@@ -451,15 +451,11 @@ let find_pers_struct check name =
       (* ELIOM *)
       let filename, side =
         try
-          let l = !load_path in
-          find_in_path_uncap l (name ^ ".cmi"), `Noside
-        with Not_found -> try
-            let l = Eliom_base.get_load_path () in
-            let side = Eliom_base.get_side () in
-            find_in_path_uncap l (name ^ ".cmi"), side
-          with Not_found ->
-            Hashtbl.add persistent_structures name None;
-            raise Not_found
+          let _ = load_path in (* Avoid touching "open Config". *)
+          Eliom_base.find_in_load_path (name ^ ".cmi")
+        with Not_found ->
+          Hashtbl.add persistent_structures name None;
+          raise Not_found
       in
       Eliom_base.in_side side @@ fun () ->
       read_pers_struct check name filename

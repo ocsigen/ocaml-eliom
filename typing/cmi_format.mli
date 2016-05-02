@@ -32,7 +32,7 @@ val output_cmi : string -> out_channel -> cmi_infos -> Digest.t
 val input_cmi : in_channel -> cmi_infos
 
 (* read a cmi from a filename, checking the magic *)
-val read_cmi : string -> cmi_infos
+val read_cmi : string -> cmi_infos * Eliom_base.shside(*ELIOM*)
 
 (* Error report *)
 

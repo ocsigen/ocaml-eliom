@@ -99,12 +99,16 @@ let set_load_path ~client ~server =
   server_load_path := List.rev server ;
   ()
 
-let get_load_path () =
-  match get_side () with
-  | `Server -> !server_load_path
-  | `Client -> !client_load_path
-  | `Shared -> !Config.load_path
-  | `Noside -> !Config.load_path
+let find_in_load_path file =
+  let side = get_side () in
+  try
+    Misc.find_in_path_uncap !Config.load_path file, `Noside
+  with Not_found as exn ->
+    let l = match side with
+      | `Server -> !server_load_path
+      | `Client -> !client_load_path
+      | _ -> raise exn
+    in Misc.find_in_path_uncap l file, side
 
 (** Utils *)
 
