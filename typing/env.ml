@@ -353,8 +353,11 @@ type pers_struct =
     ps_filename: string;
     ps_flags: pers_flags list }
 
+(* ELIOM *)
+(* Those idents are all persistent, but can contain different sides. *)
 let persistent_structures =
-  (Hashtbl.create 17 : (string, pers_struct option) Hashtbl.t)
+  (Hashtbl.create 17 : (Ident.t, pers_struct option) Hashtbl.t)
+(* /ELIOM *)
 
 (* Consistency between persistent structures *)
 
@@ -392,7 +395,8 @@ let check_consistency ps =
 
 let save_pers_struct crc ps =
   let modname = ps.ps_name in
-  Hashtbl.add persistent_structures modname (Some ps);
+  let id = Ident.create_persistent modname in (* ELIOM *)
+  Hashtbl.add persistent_structures id (Some ps);
   List.iter
     (function
         | Rectypes -> ()
@@ -402,9 +406,18 @@ let save_pers_struct crc ps =
   Consistbl.set crc_units modname crc ps.ps_filename;
   add_import modname
 
-let read_pers_struct check modname filename =
+let read_pers_struct check id filename =
+  let modname = Ident.name id in (* ELIOM *)
   add_import modname;
   let cmi, side(*ELIOM*) = read_cmi filename in
+  (* ELIOM *)
+  if side <> Ident.side id then begin
+    Format.eprintf "Changing side of %a to %a.@."
+      Ident.print id Eliom_base.pp side ;
+    Ident.change_side side id ;
+    Format.eprintf "Now is %a.@." Ident.print id ;
+  end ;
+  (* /ELIOM *)
   let name = cmi.cmi_name in
   let sign = cmi.cmi_sign in
   let crcs = cmi.cmi_crcs in
@@ -415,7 +428,7 @@ let read_pers_struct check modname filename =
   in
   let comps =
       !components_of_module' ~deprecated empty Subst.identity
-                             (Pident(Ident.create_persistent name))
+                             (Pident id)
                              (Mty_signature sign)
   in
   let ps = { ps_name = name;
@@ -436,12 +449,13 @@ let read_pers_struct check modname filename =
         | Opaque -> add_imported_opaque modname)
     ps.ps_flags;
   if check then check_consistency ps;
-  Hashtbl.add persistent_structures modname (Some ps);
+  Hashtbl.add persistent_structures id (Some ps);
   ps
 
-let find_pers_struct check name =
+let find_pers_struct check id =
+  let name = Ident.name id in
   if name = "*predef*" then raise Not_found;
-  match Hashtbl.find persistent_structures name with
+  match Hashtbl.find persistent_structures id with
   | Some ps -> ps
   | None -> raise Not_found
   | exception Not_found ->
@@ -451,16 +465,17 @@ let find_pers_struct check name =
           let _ = load_path in (* Avoid touching "open Config". *)
           Eliom_base.find_in_load_path (name ^ ".cmi")
         with Not_found ->
-          Hashtbl.add persistent_structures name None;
+          Hashtbl.add persistent_structures id None;
           raise Not_found
       in
       Eliom_base.in_side side @@ fun () ->
-      read_pers_struct check name filename
+      read_pers_struct check id filename
 
 (* Emits a warning if there is no valid cmi for name *)
-let check_pers_struct name =
+let check_pers_struct id =
+  let name = Ident.name id in
   try
-    ignore (find_pers_struct false name)
+    ignore (find_pers_struct false id)
   with
   | Not_found ->
       let warn = Warnings.No_cmi_file(name, None) in
@@ -499,7 +514,7 @@ let check_pers_struct name =
     (* PR#6843: record the weak dependency ([add_import]) regardless of
        whether the check suceeds, to help make builds more
        deterministic. *)
-    add_import name;
+    add_import @@ Ident.name name;
     if (Warnings.is_active (Warnings.No_cmi_file("", None))) then
       !add_delayed_check_forward
         (fun () -> check_pers_struct name)
@@ -545,9 +560,7 @@ let rec find_module_descr path env =
       with Not_found ->
         if Ident.persistent id && not (Ident.name id = !current_unit)
         then
-          (* ELIOM *)
-          Eliom_base.in_side (Ident.side id) @@ fun () ->
-          (find_pers_struct (Ident.name id)).ps_comps
+          (find_pers_struct id(* ELIOM *)).ps_comps
         else raise Not_found
       end
   | Pdot(p, s, pos) ->
@@ -650,9 +663,7 @@ let find_module ~alias path env =
         in data
       with Not_found ->
         if Ident.persistent id && not (Ident.name id = !current_unit) then
-          (* ELIOM *)
-          Eliom_base.in_side (Ident.side id) @@ fun () ->
-          let ps = find_pers_struct (Ident.name id) in
+          let ps = find_pers_struct id(* ELIOM *) in
           md (Mty_signature(Lazy.force ps.ps_sig))
         else raise Not_found
       end
@@ -798,8 +809,12 @@ let rec lookup_module_descr_aux ?loc lid env =
         EnvTbl.find_name s env.components
       with Not_found ->
         if s = !current_unit then raise Not_found;
-        let ps = find_pers_struct s in
-        (Pident(Ident.create_persistent s), ps.ps_comps)
+        (* ELIOM *)
+        (* We create the id and pass it to find_pers_struct to find its side
+           Before returning it. *)
+        let id = Ident.create_persistent s in
+        let ps = find_pers_struct id in
+        (Pident id, ps.ps_comps)
       end
   | Ldot(l, s) ->
       let (p, descr) = lookup_module_descr ?loc l env in
@@ -843,10 +858,14 @@ and lookup_module ~load ?loc lid env : Path.t =
         p
       with Not_found ->
         if s = !current_unit then raise Not_found;
-        let p = Pident(Ident.create_persistent s) in
-        if !Clflags.transparent_modules && not load then check_pers_struct s
+        (* ELIOM *)
+        (* We create the id and pass it to find_pers_struct to find its side
+           Before returning it. *)
+        let id = Ident.create_persistent s in
+        let p = Pident id in
+        if !Clflags.transparent_modules && not load then check_pers_struct id
         else begin
-          let ps = find_pers_struct s in
+          let ps = find_pers_struct id in
           report_deprecated ?loc p ps.ps_comps.deprecated
         end;
         p
@@ -1105,7 +1124,7 @@ let rec scrape_alias_for_visit env mty =
   match mty with
   | Mty_alias (Pident id)
     when Ident.persistent id
-      && not (Hashtbl.mem persistent_structures (Ident.name id)) -> false
+      && not (Hashtbl.mem persistent_structures id) -> false
   | Mty_alias path -> (* PR#6600: find_module may raise Not_found *)
       begin try scrape_alias_for_visit env (find_module path env).md_type
       with Not_found -> false
@@ -1135,10 +1154,10 @@ let iter_env proj1 proj2 f env () =
     in iter_env_cont := (path, cont) :: !iter_env_cont
   in
   Hashtbl.iter
-    (fun s pso ->
+    (fun id pso ->
       match pso with None -> ()
       | Some ps ->
-          let id = Pident (Ident.create_persistent s) in
+          let id = Pident id in
           iter_components id id ps.ps_comps)
     persistent_structures;
   Ident.iter
@@ -1159,7 +1178,7 @@ let same_types env1 env2 =
 
 let used_persistent () =
   let r = ref Concr.empty in
-  Hashtbl.iter (fun s pso -> if pso != None then r := Concr.add s !r)
+  Hashtbl.iter (fun s pso -> if pso != None then r := Concr.add (Ident.name s) !r)
     persistent_structures;
   !r
 
@@ -1768,8 +1787,9 @@ let open_signature slot root sg env0 =
 (* Open a signature from a file *)
 
 let open_pers_signature name env =
-  let ps = find_pers_struct name in
-  open_signature None (Pident(Ident.create_persistent name))
+  let id = Ident.create_persistent name in
+  let ps = find_pers_struct id in
+  open_signature None (Pident id)
     (Lazy.force ps.ps_sig) env
 
 let open_signature ?(loc = Location.none) ?(toplevel = false) ovf root sg env =
@@ -1807,13 +1827,15 @@ let open_signature ?(loc = Location.none) ?(toplevel = false) ovf root sg env =
 (* Read a signature from a file *)
 
 let read_signature modname filename =
-  let ps = read_pers_struct modname filename in
+  let id = Ident.create_persistent modname in
+  let ps = read_pers_struct id filename in
   Lazy.force ps.ps_sig
 
 (* Return the CRC of the interface of the given compilation unit *)
 
 let crc_of_unit name =
-  let ps = find_pers_struct name in
+  let id = Ident.create_persistent name in
+  let ps = find_pers_struct id in
   let crco =
     try
       List.assoc name ps.ps_crcs
@@ -1931,11 +1953,11 @@ let fold_modules f lid env acc =
           acc
       in
       Hashtbl.fold
-        (fun name ps acc ->
+        (fun id ps acc ->
           match ps with
               None -> acc
             | Some ps ->
-              f name (Pident(Ident.create_persistent name))
+              f (Ident.name id) (Pident id)
                      (md (Mty_signature (Lazy.force ps.ps_sig))) acc)
         persistent_structures
         acc
