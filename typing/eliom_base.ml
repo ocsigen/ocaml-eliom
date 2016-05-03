@@ -1,6 +1,5 @@
 [@@@ocaml.warning "+a-4-9-40-42"]
 open Parsetree
-open Ast_helper
 
 type side = [
   | `Client
@@ -115,18 +114,17 @@ let find_in_load_path file =
 let exp_add_attr ~attrs e =
   {e with pexp_attributes = attrs @ e.pexp_attributes}
 
-let error f ?sub ?loc =
-  Format.ksprintf @@ fun s ->
-  f ?loc ?attrs:None @@ Ast_mapper.extension_of_error @@
-  Location.error ?loc ?sub s
-
-let exp_error ?sub ~loc = error Exp.extension ?sub ~loc
-let str_error ?sub ~loc = error Str.extension ?sub ~loc
-let sig_error ?sub ~loc = error Sig.extension ?sub ~loc
-
 let is_annotation ~txt base =
   txt = base || txt = ("eliom."^base)
 
+let error ~loc fmt =
+  Location.raise_errorf ~loc ("Eliom: "^^fmt)
+
+let is_authorized loc =
+  match get_side () with
+  | `Noside -> error ~loc
+        "Side annotations are not authorized out of eliom files."
+  | `Shared | `Server | `Client -> ()
 
 (** Parsetree inspection and emission. *)
 
@@ -135,18 +133,22 @@ module Fragment = struct
   let name = "client"
   let attr loc = ({Location.txt=name; loc},PStr [])
 
-  let check e = match e.pexp_desc with
+  let check e =
+    match e.pexp_desc with
     | Pexp_extension ({txt},payload) when is_annotation ~txt name ->
         begin match payload with
-        | PStr [{pstr_desc = Pstr_eval (_e,_attrs)}] -> true
-        | _ -> false (* TODO: Report error *)
+        | PStr [{pstr_desc = Pstr_eval (_e,_attrs)}] ->
+            is_authorized e.pexp_loc ; true
+        | _ -> error ~loc:e.pexp_loc "Wrong payload for client fragment"
         end
     | _ -> false
 
-  let get e = match e.pexp_desc with
+  let get e =
+    is_authorized e.pexp_loc ;
+    match e.pexp_desc with
     | Pexp_extension ({txt},PStr [{pstr_desc = Pstr_eval (e,attrs)}])
       when txt = name -> exp_add_attr ~attrs e
-    | _ -> exp_error ~loc:e.pexp_loc "Eliom: Not a fragment."
+    | _ -> error ~loc:e.pexp_loc "A client fragment was expected"
 
 end
 
@@ -155,19 +157,23 @@ module Injection = struct
 
   let op = "~%"
 
-  let check e = match e.pexp_desc with
+  let check e =
+    match e.pexp_desc with
     | Pexp_apply ({pexp_desc = Pexp_ident {txt}}, args)
       when txt = Longident.Lident op ->
         begin match args with
-        | [Nolabel, _] -> true
-        | _ -> false (* TODO: Report error *)
+        | [Nolabel, _] ->
+            is_authorized e.pexp_loc ; true
+        | _ -> error ~loc:e.pexp_loc "Wrong payload for an injection"
         end
     | _ -> false
 
-  let get e =  match e.pexp_desc with
+  let get e =
+    is_authorized e.pexp_loc ;
+    match e.pexp_desc with
     | Pexp_apply ({pexp_desc=Pexp_ident {txt}}, [Nolabel, e])
       when txt = Longident.Lident op -> e
-    | _ -> exp_error ~loc:e.pexp_loc "Eliom: Not an injection."
+    | _ -> error ~loc:e.pexp_loc "An injection was expected"
 
 
   let name = "injection"
@@ -181,18 +187,22 @@ module Section = struct
   let server = "server"
   let shared = "shared"
 
-  let check e = match e.pstr_desc with
+  let check e =
+    match e.pstr_desc with
     | Pstr_extension (({Location.txt},payload),_)
       when is_annotation ~txt client ||
            is_annotation ~txt server ||
            is_annotation ~txt shared ->
         begin match payload with
-        | PStr [_str] -> true
-        | _ -> false (* TODO: Report error *)
+        | PStr [_str] ->
+            is_authorized e.pstr_loc ; true
+        | _ -> error ~loc:e.pstr_loc "Wrong payload for a section"
         end
     | _ -> false
 
-  let get e = match e.pstr_desc with
+  let get e =
+    is_authorized e.pstr_loc ;
+    match e.pstr_desc with
     | Pstr_extension (({Location.txt},PStr [str]),_)
       when is_annotation ~txt client -> (`Client, str)
     | Pstr_extension (({Location.txt},PStr [str]),_)
@@ -200,20 +210,24 @@ module Section = struct
     | Pstr_extension (({Location.txt},PStr [str]),_)
       when is_annotation ~txt shared -> (`Shared, str)
     (* TODO : Drop attributes *)
-    | _ -> (`Server, str_error ~loc:e.pstr_loc "Eliom: Not a section")
+    | _ -> error ~loc:e.pstr_loc "A section was expected"
 
-  let check_sig e = match e.psig_desc with
+  let check_sig e =
+    match e.psig_desc with
     | Psig_extension (({Location.txt},payload),_)
       when is_annotation ~txt client ||
            is_annotation ~txt server ||
            is_annotation ~txt shared ->
         begin match payload with
-        | PSig _ -> true
-        | _ -> false (* TODO: Report error *)
+        | PSig _ ->
+            is_authorized e.psig_loc ; true
+        | _ -> error ~loc:e.psig_loc "Wrong payload for a section"
         end
     | _ -> false
 
-  let get_sig e = match e.psig_desc with
+  let get_sig e =
+    is_authorized e.psig_loc ;
+    match e.psig_desc with
     | Psig_extension (({Location.txt},PSig l),_)
       when is_annotation ~txt client -> (`Client, l)
     | Psig_extension (({Location.txt},PSig l),_)
@@ -221,7 +235,7 @@ module Section = struct
     | Psig_extension (({Location.txt},PSig l),_)
       when is_annotation ~txt shared -> (`Shared, l)
     (* TODO : Drop attributes *)
-    | _ -> (`Server, [sig_error ~loc:e.psig_loc "Eliom: Not a section"])
+    | _ -> error ~loc:e.psig_loc "A section was expected"
 
   let attr side loc =
     let txt = match side with
