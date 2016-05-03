@@ -8,24 +8,29 @@ let () = assert
   (String.length cmi_magic_number = String.length Config.cmi_magic_number)
 
 let make_iterator it_ident =
+  let r = ref TypeSet.empty in
   let it_path p = List.iter it_ident @@ Path.heads p in
   let it_type_expr it ty =
-    it.it_do_type_expr it ty ;
-    let () = match ty.desc with
-      | Tconstr (_, _, abbrev) ->
-          iter_abbrev (it.it_type_expr it) !abbrev
-      | _ -> ()
-    in
-    ()
+    if TypeSet.mem ty !r then ()
+    else begin
+      r := TypeSet.add ty !r ;
+      it.it_do_type_expr it ty ;
+      let () = match ty.desc with
+        | Tconstr (_, _, abbrev) ->
+            iter_abbrev (it.it_type_expr it) !abbrev
+        | _ -> ()
+      in
+      ()
+    end
   in
   { type_iterators with
     it_path ; it_ident ; it_type_expr ;
   }
 
-let translate =
+let translate tsig =
   let it_ident i = Ident.change_side (Eliom_base.get_side ()) i in
   let it = make_iterator it_ident in
-  it.it_signature it
+  it.it_signature it tsig
 
 let global_side s =
   let r = ref `Noside in
