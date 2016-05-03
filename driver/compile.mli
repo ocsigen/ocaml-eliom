@@ -17,6 +17,6 @@
 
 open Format
 
-val interface: formatter -> string -> string -> unit
+val interface: formatter -> sourcefile:string -> outputprefix:string -> unit
 val implementation: formatter -> string -> string -> unit
 val c_file: string -> unit

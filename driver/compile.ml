@@ -13,103 +13,46 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(* The batch compiler *)
-
-open Misc
-open Format
-open Typedtree
-open Compenv
-
-(* Compile a .mli file *)
-
-(* Keep in sync with the copy in optcompile.ml *)
+open Libcompile
 
 let tool_name = "ocamlc"
 
-let interface ppf sourcefile outputprefix =
-  Compmisc.init_path false;
-  let modulename = module_of_filename ppf sourcefile outputprefix in
-  Env.set_unit_name modulename;
-  let initial_env = Compmisc.initial_env () in
-  let ast = Pparse.parse_interface ~tool_name ppf sourcefile in
-  if !Clflags.dump_parsetree then fprintf ppf "%a@." Printast.interface ast;
-  if !Clflags.dump_source then fprintf ppf "%a@." Pprintast.signature ast;
-  let tsg = Typemod.type_interface initial_env ast in
-  if !Clflags.dump_typedtree then fprintf ppf "%a@." Printtyped.interface tsg;
-  let sg = tsg.sig_type in
-  if !Clflags.print_types then
-    Printtyp.wrap_printing_env initial_env (fun () ->
-        fprintf std_formatter "%a@."
-          Printtyp.signature (Typemod.simplify_signature sg));
-  ignore (Includemod.signatures initial_env sg sg);
-  Typecore.force_delayed_checks ();
-  Warnings.check_fatal ();
-  if not !Clflags.print_types then begin
-    let deprecated = Builtin_attributes.deprecated_of_sig ast in
-    let sg =
-      Env.save_signature ~deprecated sg modulename (outputprefix ^ ".cmi")
-    in
-    Typemod.save_signature modulename tsg outputprefix sourcefile
-      initial_env sg ;
-  end
+let c_file = Libcompile.c_file
+let interface = Libcompile.interface ~tool_name
 
-(* Compile a .ml file *)
+(** Compile a .ml file to bytecode *)
 
-let print_if ppf flag printer arg =
-  if !flag then fprintf ppf "%a@." printer arg;
-  arg
+let to_bytecode i (typedtree, coercion) =
+  (typedtree, coercion)
+  |> Timings.(time (Transl i.sourcefile))
+    (Translmod.transl_implementation i.modulename)
+  |> print_if i Clflags.dump_rawlambda Printlambda.lambda
+  |> Timings.(accumulate_time (Generate i.sourcefile))
+    (fun lambda ->
+       Simplif.simplify_lambda lambda
+       |> print_if i Clflags.dump_lambda Printlambda.lambda
+       |> Bytegen.compile_implementation i.modulename
+       |> print_if i Clflags.dump_instr Printinstr.instrlist)
 
-let (++) x f = f x
-
-let implementation ppf sourcefile outputprefix =
-  Compmisc.init_path false;
-  let modulename = module_of_filename ppf sourcefile outputprefix in
-  Env.set_unit_name modulename;
-  let env = Compmisc.initial_env() in
+let emit_bytecode i bytecode =
+  let objfile = i.outputprefix ^ ".cmo" in
+  let oc = open_out_bin objfile in
   try
-    let (typedtree, coercion) =
-      Pparse.parse_implementation ~tool_name ppf sourcefile
-      ++ print_if ppf Clflags.dump_parsetree Printast.implementation
-      ++ print_if ppf Clflags.dump_source Pprintast.structure
-      ++ Timings.(time (Typing sourcefile))
-          (Typemod.type_implementation sourcefile outputprefix modulename env)
-      ++ print_if ppf Clflags.dump_typedtree
-        Printtyped.implementation_with_coercion
-    in
-    if !Clflags.print_types then begin
-      Warnings.check_fatal ();
-      Stypes.dump (Some (outputprefix ^ ".annot"))
-    end else begin
-      let bytecode =
-        (typedtree, coercion)
-        ++ Timings.(time (Transl sourcefile))
-            (Translmod.transl_implementation modulename)
-        ++ print_if ppf Clflags.dump_rawlambda Printlambda.lambda
-        ++ Timings.(accumulate_time (Generate sourcefile))
-            (fun lambda ->
-              Simplif.simplify_lambda lambda
-              ++ print_if ppf Clflags.dump_lambda Printlambda.lambda
-              ++ Bytegen.compile_implementation modulename
-              ++ print_if ppf Clflags.dump_instr Printinstr.instrlist)
-      in
-      let objfile = outputprefix ^ ".cmo" in
-      let oc = open_out_bin objfile in
-      try
-        bytecode
-        ++ Timings.(accumulate_time (Generate sourcefile))
-            (Emitcode.to_file oc modulename objfile);
-        Warnings.check_fatal ();
-        close_out oc;
-        Stypes.dump (Some (outputprefix ^ ".annot"))
-      with x ->
-        close_out oc;
-        remove_file objfile;
-        raise x
-    end
+    bytecode
+    |> Timings.(accumulate_time (Generate i.sourcefile))
+      (Emitcode.to_file oc i.modulename objfile);
+    Warnings.check_fatal ();
+    close_out oc;
+    Stypes.dump (Some (i.outputprefix ^ ".annot"))
   with x ->
-    Stypes.dump (Some (outputprefix ^ ".annot"));
+    close_out oc;
+    Misc.remove_file objfile;
     raise x
 
-let c_file name =
-  Location.input_name := name;
-  if Ccomp.compile_file name <> 0 then exit 2
+let frontend info = typecheck_impl info @@ parse_impl info
+let backend info typed = emit_bytecode info @@ to_bytecode info typed
+
+let implementation ppf sourcefile outputprefix =
+  let info = init ppf ~init_path:false ~tool_name ~sourcefile ~outputprefix in
+
+  wrap_compilation ~frontend ~backend info
