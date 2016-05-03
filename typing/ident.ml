@@ -33,6 +33,12 @@ let side i =
   | false, true  -> `Client
   | true , true  -> `Shared
 
+let invert = function
+  | `Client -> `Server
+  | `Server -> `Client
+  | `Shared -> `Noside
+  | `Noside -> `Shared
+
 let side_to_flag = function
   | `Server -> server_flag
   | `Client -> client_flag
@@ -49,7 +55,7 @@ let change_side s i =
   i.flags <-
     i.flags
     (* Take care of removing the symmetric, if necessary. *)
-    land (lnot @@ side_to_flag @@ Eliom_base.mirror s)
+    land (lnot @@ side_to_flag @@ invert s)
     lor (side_to_flag s)
 
 (* /ELIOM *)
