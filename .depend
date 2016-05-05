@@ -249,10 +249,10 @@ typing/datarepr.cmx : typing/types.cmx typing/path.cmx parsing/location.cmx \
     typing/datarepr.cmi
 typing/eliom_base.cmo : parsing/parsetree.cmi utils/misc.cmi \
     parsing/longident.cmi parsing/location.cmi utils/config.cmi \
-    typing/eliom_base.cmi
+    parsing/ast_helper.cmi typing/eliom_base.cmi
 typing/eliom_base.cmx : parsing/parsetree.cmi utils/misc.cmx \
     parsing/longident.cmx parsing/location.cmx utils/config.cmx \
-    typing/eliom_base.cmi
+    parsing/ast_helper.cmx typing/eliom_base.cmi
 typing/eliom_types.cmo : typing/types.cmi typing/path.cmi typing/ident.cmi \
     typing/eliom_base.cmi utils/config.cmi typing/btype.cmi \
     typing/eliom_types.cmi
@@ -1961,6 +1961,7 @@ middle_end/base_types/var_within_closure.cmx : \
 driver/compenv.cmi :
 driver/compile.cmi :
 driver/compmisc.cmi : typing/env.cmi
+driver/eliom_emit.cmi : typing/typedtree.cmi parsing/parsetree.cmi
 driver/errors.cmi :
 driver/main_args.cmi :
 driver/main.cmi :
@@ -1975,13 +1976,15 @@ driver/compenv.cmx : utils/warnings.cmx utils/misc.cmx parsing/location.cmx \
 driver/compile.cmo : utils/warnings.cmi bytecomp/translmod.cmi \
     utils/timings.cmi typing/stypes.cmi bytecomp/simplif.cmi \
     bytecomp/printlambda.cmi bytecomp/printinstr.cmi utils/misc.cmi \
-    driver/libcompile.cmo bytecomp/emitcode.cmi utils/clflags.cmi \
-    bytecomp/bytegen.cmi driver/compile.cmi
+    driver/libcompile.cmo typing/envaux.cmi bytecomp/emitcode.cmi \
+    driver/eliom_emit.cmi utils/clflags.cmi bytecomp/bytegen.cmi \
+    driver/compile.cmi
 driver/compile.cmx : utils/warnings.cmx bytecomp/translmod.cmx \
     utils/timings.cmx typing/stypes.cmx bytecomp/simplif.cmx \
     bytecomp/printlambda.cmx bytecomp/printinstr.cmx utils/misc.cmx \
-    driver/libcompile.cmx bytecomp/emitcode.cmx utils/clflags.cmx \
-    bytecomp/bytegen.cmx driver/compile.cmi
+    driver/libcompile.cmx typing/envaux.cmx bytecomp/emitcode.cmx \
+    driver/eliom_emit.cmx utils/clflags.cmx bytecomp/bytegen.cmx \
+    driver/compile.cmi
 driver/compmisc.cmo : typing/typemod.cmi utils/misc.cmi \
     parsing/longident.cmi parsing/location.cmi typing/ident.cmi \
     typing/env.cmi typing/eliom_base.cmi utils/config.cmi driver/compenv.cmi \
@@ -1990,6 +1993,14 @@ driver/compmisc.cmx : typing/typemod.cmx utils/misc.cmx \
     parsing/longident.cmx parsing/location.cmx typing/ident.cmx \
     typing/env.cmx typing/eliom_base.cmx utils/config.cmx driver/compenv.cmx \
     utils/clflags.cmx parsing/asttypes.cmi driver/compmisc.cmi
+driver/eliom_emit.cmo : typing/untypeast.cmi typing/typedtreeMap.cmi \
+    typing/typedtreeIter.cmi typing/typedtree.cmi parsing/parsetree.cmi \
+    parsing/longident.cmi parsing/location.cmi parsing/asttypes.cmi \
+    parsing/ast_mapper.cmi parsing/ast_helper.cmi driver/eliom_emit.cmi
+driver/eliom_emit.cmx : typing/untypeast.cmx typing/typedtreeMap.cmx \
+    typing/typedtreeIter.cmx typing/typedtree.cmx parsing/parsetree.cmi \
+    parsing/longident.cmx parsing/location.cmx parsing/asttypes.cmi \
+    parsing/ast_mapper.cmx parsing/ast_helper.cmx driver/eliom_emit.cmi
 driver/errors.cmo : parsing/location.cmi driver/errors.cmi
 driver/errors.cmx : parsing/location.cmx driver/errors.cmi
 driver/libcompile.cmo : utils/warnings.cmi typing/typemod.cmi \
@@ -1997,15 +2008,17 @@ driver/libcompile.cmo : utils/warnings.cmi typing/typemod.cmi \
     typing/stypes.cmi typing/printtyped.cmi typing/printtyp.cmi \
     parsing/printast.cmi parsing/pprintast.cmi driver/pparse.cmi \
     utils/misc.cmi parsing/location.cmi typing/includemod.cmi typing/env.cmi \
-    utils/config.cmi driver/compmisc.cmi driver/compenv.cmi utils/clflags.cmi \
-    utils/ccomp.cmi parsing/builtin_attributes.cmi
+    driver/eliom_emit.cmi utils/config.cmi driver/compmisc.cmi \
+    driver/compenv.cmi utils/clflags.cmi utils/ccomp.cmi \
+    parsing/builtin_attributes.cmi
 driver/libcompile.cmx : utils/warnings.cmx typing/typemod.cmx \
     typing/typedtree.cmx typing/typecore.cmx utils/timings.cmx \
     typing/stypes.cmx typing/printtyped.cmx typing/printtyp.cmx \
     parsing/printast.cmx parsing/pprintast.cmx driver/pparse.cmx \
     utils/misc.cmx parsing/location.cmx typing/includemod.cmx typing/env.cmx \
-    utils/config.cmx driver/compmisc.cmx driver/compenv.cmx utils/clflags.cmx \
-    utils/ccomp.cmx parsing/builtin_attributes.cmx
+    driver/eliom_emit.cmx utils/config.cmx driver/compmisc.cmx \
+    driver/compenv.cmx utils/clflags.cmx utils/ccomp.cmx \
+    parsing/builtin_attributes.cmx
 driver/main_args.cmo : utils/warnings.cmi utils/clflags.cmi \
     driver/main_args.cmi
 driver/main_args.cmx : utils/warnings.cmx utils/clflags.cmx \
