@@ -84,6 +84,7 @@ COMP=bytecomp/lambda.cmo bytecomp/printlambda.cmo \
   bytecomp/debuginfo.cmo \
   driver/pparse.cmo driver/main_args.cmo \
   driver/compenv.cmo driver/compmisc.cmo \
+  driver/eliom_emit.cmo \
   driver/libcompile.cmo
 
 COMMON=$(UTILS) $(PARSING) $(TYPING) $(COMP)
