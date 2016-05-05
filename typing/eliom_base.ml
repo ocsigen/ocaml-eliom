@@ -121,6 +121,10 @@ let exp_add_attr ~attrs e =
 let is_annotation ~txt base =
   txt = base || txt = ("eliom."^base)
 
+let attr s loc =
+  ({Location.txt="eliom."^s; loc},PStr [])
+
+
 let error ~loc fmt =
   Location.raise_errorf ~loc ("Eliom: "^^fmt)
 
@@ -135,7 +139,7 @@ let is_authorized loc =
 module Fragment = struct
 
   let name = "client"
-  let attr loc = ({Location.txt=name; loc},PStr [])
+  let attr = attr name
 
   let check e =
     match e.pexp_desc with
@@ -181,7 +185,7 @@ module Injection = struct
 
 
   let name = "injection"
-  let attr loc = ({Location.txt=name; loc},PStr [])
+  let attr = attr name
 
 end
 
@@ -266,6 +270,6 @@ module Section = struct
       | `Client -> client
       | `Server -> server
       | `Shared -> shared
-    in ({Location.txt; loc},PStr [])
+    in attr txt loc
 
 end
