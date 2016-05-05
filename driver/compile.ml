@@ -56,3 +56,29 @@ let implementation ppf sourcefile outputprefix =
   let info = init ppf ~init_path:false ~tool_name ~sourcefile ~outputprefix in
 
   wrap_compilation ~frontend ~backend info
+
+(* ELIOM *)
+let eliom_implementation ppf sourcefile outputprefix =
+  let info = init ppf ~init_path:false ~tool_name ~sourcefile ~outputprefix in
+  let comp_side s ast =
+    Envaux.reset_cache () ;
+    let client_info = eliom_init s
+        ppf ~init_path:false ~tool_name ~sourcefile ~outputprefix
+    in
+    backend client_info @@ silent_typing client_info ast ;
+  in
+  try
+    let {Eliom_emit. client ; server } = eliom_pretype info in
+    if not !Clflags.print_types then begin
+      comp_side "server" server ;
+      comp_side "client" client ;
+    end else begin
+      Warnings.check_fatal ();
+      Stypes.dump (Some (info.outputprefix ^ ".annot"));
+    end
+  with x ->
+    Stypes.dump (Some (info.outputprefix ^ ".annot"));
+    Misc.remove_file (obj info);
+    Misc.remove_file (cmx info);
+    raise x
+(* /ELIOM *)

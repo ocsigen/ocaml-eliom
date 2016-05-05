@@ -27,10 +27,21 @@ let process_implementation_file ppf name =
   Compile.implementation ppf name opref;
   objfiles := (opref ^ ".cmo") :: !objfiles
 
+(* ELIOM *)
+let process_eliom_file ppf name =
+  let opref = output_prefix name in
+  Compile.eliom_implementation ppf name opref;
+  objfiles := (opref ^ ".server.cmo") :: !objfiles
+(* /ELIOM *)
+
 let process_file ppf name =
   if Filename.check_suffix name ".ml"
   || Filename.check_suffix name ".mlt" then
     process_implementation_file ppf name
+  (* ELIOM *)
+  else if Filename.check_suffix name ".eliom" then
+    process_eliom_file ppf name
+  (* /ELIOM *)
   else if Filename.check_suffix name !Config.interface_suffix then
     process_interface_file ppf name
   else if Filename.check_suffix name ".cmo"

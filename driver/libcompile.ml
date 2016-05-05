@@ -120,3 +120,22 @@ let wrap_compilation ~frontend ~backend info =
 let c_file name =
   Location.input_name := name;
   if Ccomp.compile_file name <> 0 then exit 2
+
+(** Eliom files *)
+
+let eliom_pretype info =
+  Eliom_emit.untype @@ fst @@ typecheck_impl info @@ parse_impl info
+let eliom_init suffix ppf ~init_path ~tool_name ~sourcefile ~outputprefix =
+  let outputprefix = outputprefix ^ "." ^ suffix in
+  let sourcefile = sourcefile ^ "." ^ suffix in
+  init ppf ~init_path ~tool_name ~sourcefile ~outputprefix
+let silent_typing i ast =
+  let val_dont_write_files = !Clflags.dont_write_files in
+  Clflags.dont_write_files := true;
+  let typedtree =
+    Timings.(time (Typing i.sourcefile))
+      (Typemod.type_implementation i.sourcefile i.outputprefix i.modulename i.env)
+      ast
+  in
+  Clflags.dont_write_files := val_dont_write_files;
+  typedtree
