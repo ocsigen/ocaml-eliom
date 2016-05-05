@@ -1231,6 +1231,10 @@ let rec type_module ?(alias=false) sttn funct_body anchor env smod =
 and type_structure ?(toplevel = false) funct_body anchor env sstr scope =
   let names = new_names () in
 
+  (* ELIOM *)
+  let sstr = Eliom_base.Section.split sstr in
+  (* /ELIOM *)
+
   let rec type_str_item env srem ({pstr_loc = loc; pstr_desc = desc} as stri) =
     match desc with
     (* ELIOM *)

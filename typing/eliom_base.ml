@@ -212,6 +212,26 @@ module Section = struct
     (* TODO : Drop attributes *)
     | _ -> error ~loc:e.pstr_loc "A section was expected"
 
+  let split_internal l =
+    let make ~loc ~attrs ext x =
+      Ast_helper.Str.extension ~loc ~attrs (ext, PStr [x])
+    in
+    let aux l stri = match stri.pstr_desc with
+      | Pstr_extension (({Location.txt} as ext, PStr str), attrs)
+        when is_annotation ~txt client ||
+             is_annotation ~txt server ||
+             is_annotation ~txt shared ->
+          let loc = stri.pstr_loc in
+          let newl = List.map (make ~loc ~attrs ext) str in
+          List.rev_append newl l
+      | _ -> stri :: l
+    in
+    List.rev @@ List.fold_left aux [] l
+
+  let split l =
+    if List.exists check l then split_internal l
+    else l
+
   let check_sig e =
     match e.psig_desc with
     | Psig_extension (({Location.txt},payload),_)
