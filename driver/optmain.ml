@@ -98,8 +98,10 @@ module Options = Main_args.Make_optcomp_options (struct
   let clear r () = r := false
 
   let _side = Eliom_base.change_side
-  let _client_I s = client_include_dirs := s :: !client_include_dirs
-  let _server_I s = server_include_dirs := s :: !server_include_dirs
+  let _client_I s =
+    Eliom_base.client_include_dirs := s :: !Eliom_base.client_include_dirs
+  let _server_I s =
+    Eliom_base.server_include_dirs := s :: !Eliom_base.server_include_dirs
 
   let _a = set make_archive
   let _absname = set Location.absname

@@ -55,3 +55,7 @@ module Section : sig
   val get_sig : Parsetree.signature_item -> (side * Parsetree.signature)
   val attr : [<side] -> Location.t -> Parsetree.attribute
 end
+
+(* Compmisc utils *)
+val client_include_dirs : string list ref
+val server_include_dirs : string list ref

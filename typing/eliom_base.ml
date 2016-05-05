@@ -90,6 +90,10 @@ let check ~loc mk_error side message =
 
 (** Load path utilities *)
 
+(* Do not use, for compmisc only *)
+let client_include_dirs = ref ([] : string list)(* -client-I *)
+and server_include_dirs = ref ([] : string list)(* -server-I *)
+
 let client_load_path = ref []
 let server_load_path = ref []
 

@@ -75,8 +75,10 @@ let show_config () =
 
 module Options = Main_args.Make_bytecomp_options (struct
   let _side = Eliom_base.change_side
-  let _client_I s = client_include_dirs := s :: !client_include_dirs
-  let _server_I s = server_include_dirs := s :: !server_include_dirs
+  let _client_I s =
+    Eliom_base.client_include_dirs := s :: !Eliom_base.client_include_dirs
+  let _server_I s =
+    Eliom_base.server_include_dirs := s :: !Eliom_base.server_include_dirs
 
   let set r () = r := true
   let unset r () = r := false
