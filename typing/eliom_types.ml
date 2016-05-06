@@ -27,8 +27,21 @@ let make_iterator it_ident =
     it_path ; it_ident ; it_type_expr ;
   }
 
+
+(* The side of builtin must not be changed, since they have a special path
+   (doesn't start with a global module). *)
+let is_predef i =
+  let rec aux i = function
+    | (_, id)::_ when Ident.same id i -> true
+    | _::t -> aux i t
+    | [] -> false
+  in aux i Predef.builtin_idents
+
 let translate tsig =
-  let it_ident i = Ident.change_side (Eliom_base.get_side ()) i in
+  let it_ident i =
+    if is_predef i then ()
+    else Ident.change_side (Eliom_base.get_side ()) i
+  in
   let it = make_iterator it_ident in
   it.it_signature it tsig
 

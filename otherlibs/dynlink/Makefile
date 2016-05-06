@@ -50,7 +50,8 @@ COMPILEROBJS=\
   ../../parsing/builtin_attributes.cmo \
   ../../typing/eliom_base.cmo ../../typing/ident.cmo ../../typing/path.cmo \
   ../../typing/primitive.cmo ../../typing/types.cmo \
-  ../../typing/btype.cmo ../../typing/eliom_types.cmo ../../typing/subst.cmo ../../typing/predef.cmo \
+  ../../typing/btype.cmo  ../../typing/subst.cmo ../../typing/predef.cmo \
+  ../../typing/eliom_types.cmo \
   ../../typing/datarepr.cmo ../../typing/cmi_format.cmo ../../typing/env.cmo \
   ../../bytecomp/lambda.cmo ../../bytecomp/instruct.cmo \
   ../../bytecomp/cmo_format.cmi ../../bytecomp/opcodes.cmo \
