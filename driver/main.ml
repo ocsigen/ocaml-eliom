@@ -30,7 +30,9 @@ let process_implementation_file ppf name =
 (* ELIOM *)
 let process_eliom_file ppf name =
   let opref = output_prefix name in
+  Eliom_base.(set_mode Eliom) ;
   Compile.eliom_implementation ppf name opref;
+  Eliom_base.(set_mode OCaml) ;
   objfiles := (opref ^ ".server.cmo") :: !objfiles
 (* /ELIOM *)
 
@@ -85,7 +87,7 @@ let show_config () =
 ;;
 
 module Options = Main_args.Make_bytecomp_options (struct
-  let _side = Eliom_base.change_side
+  let _side _ = ()
   let _client_I s =
     Eliom_base.client_include_dirs := s :: !Eliom_base.client_include_dirs
   let _server_I s =

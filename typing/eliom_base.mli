@@ -1,5 +1,15 @@
 [@@@ocaml.warning "+a-4-9-40-42"]
 
+(** Compilation mode *)
+
+type mode =
+  | OCaml
+  | Eliom
+  | Client
+  | Server
+
+val set_mode : mode -> unit
+
 (** Side utilities. *)
 
 type side = [
@@ -29,9 +39,14 @@ val get_side : unit -> [>shside]
 
 (** Handling of client/server load path. *)
 
-val change_side : string -> unit
 val set_load_path : client:string list -> server:string list -> unit
 val find_in_load_path : string -> string * shside
+
+(** Error *)
+
+val error :
+  loc:Location.t ->
+  ('a, Format.formatter, unit, unit, unit, 'b) format6 -> 'a
 
 (** Parsetree inspection and emission. *)
 

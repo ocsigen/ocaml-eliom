@@ -1,6 +1,17 @@
 [@@@ocaml.warning "+a-4-9-40-42"]
 open Parsetree
 
+
+type mode =
+  | OCaml
+  | Eliom
+  | Client
+  | Server
+
+let mode = ref OCaml
+let set_mode x = mode := x
+
+
 type side = [
   | `Client
   | `Server
@@ -42,12 +53,6 @@ let mirror = function
 
 let side : shside ref = ref `Noside
 let get_side () = (!side : shside :> [>shside])
-let change_side = function
-  | "server" -> side := `Server
-  | "client" -> side := `Client
-  | "shared" -> side := `Shared
-  | _ -> ()
-
 
 (** In order to report exceptions with the proper scope, we wrap exceptions
     that cross side boundaries with a side annotation.
@@ -74,14 +79,22 @@ let () =
     | _ -> None
   in Location.register_error_of_exn handler
 
-
+(* let () = Printexc.register_printer (function *)
+(*     | Error (side, exn) -> *)
+(*         let s = *)
+(*           Format.asprintf "Side:%s %a" (to_string side) *)
+(*             Location.report_exception exn *)
+(*         in *)
+(*         Some s *)
+(*     | _ -> None *)
+(*   ) *)
 
 let check ~loc mk_error side message =
   let current_side = get_side () in
   if not @@ conform ~scope:current_side ~id:side then
     raise @@ mk_error @@
     Location.errorf ~loc
-      "%s are only allowed in a %s context, \
+      "Eliom: %s are only allowed in a %s context, \
        but it is used in a %s context."
       message
       (to_string side)
@@ -102,7 +115,7 @@ let set_load_path ~client ~server =
   server_load_path := List.rev server ;
   ()
 
-let find_in_load_path file =
+let eliom_find file =
   let side = get_side () in
   try
     Misc.find_in_path_uncap !Config.load_path file, `Noside
@@ -112,6 +125,18 @@ let find_in_load_path file =
       | `Client -> !client_load_path
       | _ -> raise exn
     in Misc.find_in_path_uncap l file, side
+
+let client_find file =
+  Misc.find_in_path_uncap (!Config.load_path @ !client_load_path) file
+
+let server_find file =
+  Misc.find_in_path_uncap (!Config.load_path @ !server_load_path) file
+
+let find_in_load_path file = match !mode with
+  | OCaml -> Misc.find_in_path_uncap !Config.load_path file, `Noside
+  | Server -> server_find file, `Noside
+  | Client -> client_find file, `Noside
+  | Eliom -> eliom_find file
 
 (** Utils *)
 
@@ -124,15 +149,16 @@ let is_annotation ~txt base =
 let attr s loc =
   ({Location.txt="eliom."^s; loc},PStr [])
 
-
 let error ~loc fmt =
   Location.raise_errorf ~loc ("Eliom: "^^fmt)
 
 let is_authorized loc =
-  match get_side () with
-  | `Noside -> error ~loc
+  match !mode with
+  | Eliom -> ()
+  | OCaml | Client | Server ->
+      error ~loc
         "Side annotations are not authorized out of eliom files."
-  | `Shared | `Server | `Client -> ()
+
 
 (** Parsetree inspection and emission. *)
 

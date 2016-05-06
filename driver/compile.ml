@@ -60,18 +60,24 @@ let implementation ppf sourcefile outputprefix =
 (* ELIOM *)
 let eliom_implementation ppf sourcefile outputprefix =
   let info = init ppf ~init_path:false ~tool_name ~sourcefile ~outputprefix in
-  let comp_side s ast =
+  let comp_side s side ast =
+    Eliom_base.set_mode side ;
     Envaux.reset_cache () ;
-    let client_info = eliom_init s
+    Env.reset_required_globals () ;
+    let info = eliom_init s
         ppf ~init_path:false ~tool_name ~sourcefile ~outputprefix
     in
-    backend client_info @@ silent_typing client_info ast ;
+    let ppf =
+      Format.formatter_of_out_channel @@ open_out (info.outputprefix^".ml")
+    in
+    Format.fprintf ppf "%a@." Pprintast.structure ast ;
+    backend info @@ silent_typing info ast ;
   in
   try
     let {Eliom_emit. client ; server } = eliom_pretype info in
     if not !Clflags.print_types then begin
-      comp_side "server" server ;
-      comp_side "client" client ;
+      comp_side "server" Eliom_base.Server server ;
+      comp_side "client" Eliom_base.Client client ;
     end else begin
       Warnings.check_fatal ();
       Stypes.dump (Some (info.outputprefix ^ ".annot"));
