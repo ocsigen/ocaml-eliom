@@ -492,11 +492,14 @@ module Server = struct
       (* [%expr *)
       (*   ([%e id], Eliom_runtime.Poly.make [%e inj], [%e pos]) :: [%e e] *)
       (* ][@metaloc loc] *)
+      let (@::) h t =
+        Exp.construct ~loc (mkloc (lid "::") loc) (Some (etuple ~loc [h; t]))
+      in
       etuple loc [
         id ;
-        app ~loc "Eliom_runtime.Poly.make" [ inj ; pos ] ;
-        e ;
-      ]
+        app ~loc "Eliom_runtime.Poly.make" [ inj ] ;
+        pos ;
+      ] @:: e
     in
     let nil = Exp.construct ~loc (mkloc (lid "[]") loc) None in
     let l = List.fold_left f nil @@ injs in
