@@ -342,7 +342,7 @@ let rec transl_type env policy styp =
       let (path, decl) = find_type env styp.ptyp_loc lid.txt in
       (* ELIOM *)
       (* Switch side to client when looking inside [_ fragment]. *)
-      begin if Path.same path Predef.path_fragment
+      begin if Eliom_typing.is_fragment ~loc ~env path
         then Eliom_base.in_side `Client
         else fun f -> f ()
       end @@ fun () ->

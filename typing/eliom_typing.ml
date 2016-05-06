@@ -198,3 +198,37 @@ module Tast = struct
     {x with sig_desc = add_tsigi_attr_desc attr x.sig_desc}
 
 end
+
+
+
+let fragment_lid = Longident.parse "Eliom_runtime.fragment"
+let fragment_type = ref `NotResolved
+let error ~loc =
+  Eliom_base.error ~loc
+    "Could not found Eliom_runtime.fragment.@ \
+     Please load the server runtime library.@."
+let try_resolve loc env = match !fragment_type with
+  | `Resolved x -> x
+  | `NotResolved -> begin try
+        let x = Env.lookup_type ~loc fragment_lid env in
+        fragment_type := `Resolved x ;
+        x
+      with Not_found ->
+        fragment_type := `NotFound ;
+        error ~loc
+    end
+  | `NotFound -> error ~loc
+
+let maybe_fragment = function
+  | Path.Pdot (Path.Pident id, "fragment", _)
+    when Ident.name id = "Eliom_runtime" -> true
+  | _ -> false
+let is_fragment ~loc ~env p =
+  Eliom_base.get_side () = `Server &&
+  maybe_fragment p &&
+  let fragment_path, _ = try_resolve loc env in
+  Path.same p fragment_path
+
+let fragment ~loc ~env t =
+  let fragment_path, _ = try_resolve loc env in
+  Btype.newgenty (Tconstr(fragment_path, [t], ref Mnil))

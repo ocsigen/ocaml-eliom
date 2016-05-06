@@ -43,3 +43,8 @@ module Tast : sig
     Types.signature_item -> Types.signature_item
 
 end
+
+
+val is_fragment : loc:Location.t -> env:Env.t -> Path.t -> bool
+val fragment :
+  loc:Location.t -> env:Env.t -> Types.type_expr -> Types.type_expr

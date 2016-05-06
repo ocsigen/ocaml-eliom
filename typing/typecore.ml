@@ -1939,7 +1939,7 @@ and type_injection env e ty_expected =
 
   match ty_injected.desc with
   | Tconstr(path, [ty], _)
-    when Path.same path Predef.path_fragment ->
+    when Eliom_typing.is_fragment ~loc ~env path ->
       unify_exp_types loc env ty ty_expected ;
       typ_exp
   | _ ->
@@ -1995,7 +1995,7 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
       (* Follow Pexp_lazy *)
       let e = Eliom_base.Fragment.get sexp in
       let ty = Eliom_base.in_side `Client @@ fun () -> newgenvar () in
-      let to_unify = Predef.type_fragment ty in
+      let to_unify = Eliom_typing.fragment ~loc ~env ty in
       Eliom_base.in_side `Client @@ fun () ->
       unify_exp_types loc env to_unify ty_expected;
       let new_exp =
