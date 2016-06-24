@@ -49,7 +49,7 @@ let incompatible o =
   exit 2
 
 module Options = Main_args.Make_optcomp_options (struct
-  let _side = option_with_arg "-side"
+  let _mode = option_with_arg "-mode"
   let _client_I = option_with_arg "-client-I"
   let _server_I = option_with_arg "-server-I"
 

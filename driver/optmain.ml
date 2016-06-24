@@ -94,15 +94,14 @@ let show_config () =
 ;;
 
 module Options = Main_args.Make_optcomp_options (struct
-  let set r () = r := true
-  let clear r () = r := false
-
-  let _side = Eliom_base.change_side
+  let _mode s = Eliom_base.(set_mode @@ mode_of_string s)
   let _client_I s =
     Eliom_base.client_include_dirs := s :: !Eliom_base.client_include_dirs
   let _server_I s =
     Eliom_base.server_include_dirs := s :: !Eliom_base.server_include_dirs
 
+  let set r () = r := true
+  let clear r () = r := false
   let _a = set make_archive
   let _absname = set Location.absname
   let _annot = set annotations

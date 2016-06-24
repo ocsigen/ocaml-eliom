@@ -87,7 +87,7 @@ let show_config () =
 ;;
 
 module Options = Main_args.Make_bytecomp_options (struct
-  let _side _ = ()
+  let _mode s = Eliom_base.(set_mode @@ mode_of_string s)
   let _client_I s =
     Eliom_base.client_include_dirs := s :: !Eliom_base.client_include_dirs
   let _server_I s =

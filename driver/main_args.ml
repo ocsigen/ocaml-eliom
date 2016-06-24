@@ -711,9 +711,9 @@ let mk_server_I f =
   "<dir> Add <dir> to the list of server include directories"
 ;;
 
-let mk_side f =
-  "-side", Arg.Symbol (["client"; "server"; "shared"], f),
-  " Determine the default side of the compiled file"
+let mk_mode f =
+  "-mode", Arg.Symbol (["client"; "server"; "ocaml";"eliom"], f),
+  " Determine the mode of the compiled file"
 ;;
 
 module type Common_options = sig
@@ -759,7 +759,7 @@ end
 module type Compiler_options = sig
   val _client_I : string -> unit
   val _server_I : string -> unit
-  val _side : string -> unit
+  val _mode : string -> unit
   val _a : unit -> unit
   val _annot : unit -> unit
   val _binannot : unit -> unit
@@ -928,7 +928,7 @@ struct
   let list = [
     mk_client_I F._client_I;
     mk_server_I F._server_I;
-    mk_side F._side;
+    mk_mode F._mode;
     mk_a F._a;
     mk_absname F._absname;
     mk_annot F._annot;
@@ -1072,7 +1072,7 @@ struct
   let list = [
     mk_client_I F._client_I;
     mk_server_I F._server_I;
-    mk_side F._side;
+    mk_mode F._mode;
     mk_a F._a;
     mk_absname F._absname;
     mk_annot F._annot;

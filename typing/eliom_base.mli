@@ -9,6 +9,7 @@ type mode =
   | Server
 
 val set_mode : mode -> unit
+val mode_of_string : string -> mode
 
 (** Side utilities. *)
 

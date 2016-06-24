@@ -10,7 +10,12 @@ type mode =
 
 let mode = ref OCaml
 let set_mode x = mode := x
-
+let mode_of_string = function
+  | "client" -> Client
+  | "server" -> Server
+  | "ocaml" -> OCaml
+  | "eliom" -> Eliom
+  | s -> raise (Arg.Bad ("Invalid argument for -side: "^s))
 
 type side = [
   | `Client
