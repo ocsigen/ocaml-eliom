@@ -89,6 +89,10 @@ let file_hash loc =
 
 module Untyp = struct
 
+  let identity_stri =
+    Untypeast.default_mapper.structure_item
+      Untypeast.default_mapper
+
   let map_mod_attr f = function
     | Tstr_eval (e, attrs) -> Tstr_eval (e, f attrs)
     | Tstr_primitive x ->
@@ -123,6 +127,17 @@ module Untyp = struct
             clt)
     | Tstr_attribute at ->
         Tstr_attribute at
+
+  (* Returns true if a structure item only declares types. *)
+  let declaration_kind = function
+    | Tstr_type _ | Tstr_modtype _ | Tstr_open _ | Tstr_class_type _
+    | Tstr_attribute _  -> `Type
+
+    | Tstr_module _ | Tstr_recmodule _ -> `Module
+
+    | Tstr_eval (_,_) | Tstr_value (_,_) | Tstr_primitive _
+    | Tstr_typext _ | Tstr_exception _
+    | Tstr_class _ | Tstr_include _ -> `Section
 
   (** Attribute extraction *)
   module Attr = struct
@@ -174,6 +189,9 @@ module Untyp = struct
     | Fragment of eliom_expr_content
     | Injection of eliom_expr_content
 
+  (* Take an expression and figure out if it's a fragment, an injection,
+     or a normal expression.
+  *)
   let unfold_expression expr =
     let build attrs expr payload =
       let open Parsetree in match payload with
@@ -430,16 +448,24 @@ module Client = struct
 
   (** The mapper *)
 
-  let structure_item _mapper stri =
-    let loc = stri.str_loc in
-    let str_desc, side = get_section_side stri.str_desc in
-    let stri = {stri with str_desc} in
-    match side with
-    | None | Some `Shared ->
+  let structure_item mapper orig_stri =
+    let loc = orig_stri.str_loc in
+    let str_desc, side = get_section_side orig_stri.str_desc in
+    let stri = {orig_stri with str_desc} in
+    match declaration_kind str_desc, side with
+    | `Module, _ -> [
+        U.default_mapper.structure_item mapper orig_stri ;
+      ]
+    | _, (None | Some `Shared) ->
         Location.raise_errorf ~loc "Eliom ICE: Unspecified section."
-    | Some `Server ->
+
+    (* If a structure is only a type declaration, we can copy it directly. *)
+    | `Type, Some (`Server | `Client) -> [
+        Untyp.identity_stri orig_stri ;
+      ]
+    | `Section , Some `Server ->
         client_closures ~loc stri @ [ server_section ~loc ]
-    | Some `Client ->
+    | `Section, Some `Client ->
         client_section ~loc stri
 
   let structure mapper {str_items} =
@@ -463,7 +489,9 @@ module Server = struct
     | Some _ -> Location.raise_errorf ~loc:e.exp_loc "Eliom ICE"
     | _ -> None
 
-  let server_section ~loc =
+  (** Server sections *)
+
+  let close_server_section ~loc =
     let e_hash = file_hash loc in
     (* [%stri *)
     (*   let () = Eliom_runtime.close_server_section [%e e_hash] *)
@@ -471,20 +499,22 @@ module Server = struct
     unit_str ~loc @@
     app ~loc "Eliom_runtime.close_server_section" [e_hash]
 
-  let fragment ~loc id arg =
-    (* [%expr *)
-    (*   Eliom_runtime.fragment *)
-    (*     ~pos:[%e position loc ] *)
-    (*     [%e id] *)
-    (*     [%e arg] *)
-    (* ][@metaloc loc] *)
-    Exp.apply ~loc (elid ~loc "Eliom_runtime.fragment") [
-      Labelled "pos", position loc ;
-      Nolabel, id ;
-      Nolabel, arg ;
+  let server_section mapper stri =
+    let loc = stri.str_loc in [
+      U.default_mapper.structure_item mapper stri ;
+      close_server_section ~loc
     ]
 
-  let client_section ~loc injs =
+  (** Client sections *)
+
+  let client_section mapper stri =
+    let loc = stri.str_loc in
+    let injs = List.map
+        (fun {id;attrs;expr} ->
+           let e = U.default_mapper.expr mapper expr in
+           id, {e with pexp_attributes = e.pexp_attributes @ attrs} )
+        (Collect.injections stri)
+    in
     let f e (id, inj) =
       let loc = inj.Parsetree.pexp_loc in
       let id = Exp.constant ~loc @@ Const.integer id in
@@ -507,9 +537,24 @@ module Server = struct
     (* [%stri *)
     (*   let () = Eliom_runtime.close_client_section [%e e_hash] [%e l] *)
     (* ][@metaloc loc] *)
-    unit_str ~loc @@
-    app ~loc "Eliom_runtime.close_client_section" [e_hash ; l]
+    [ unit_str ~loc @@
+      app ~loc "Eliom_runtime.close_client_section" [e_hash ; l]
+    ]
 
+  (** Fragments *)
+
+  let fragment ~loc id arg =
+    (* [%expr *)
+    (*   Eliom_runtime.fragment *)
+    (*     ~pos:[%e position loc ] *)
+    (*     [%e id] *)
+    (*     [%e arg] *)
+    (* ][@metaloc loc] *)
+    Exp.apply ~loc (elid ~loc "Eliom_runtime.fragment") [
+      Labelled "pos", position loc ;
+      Nolabel, id ;
+      Nolabel, arg ;
+    ]
 
   let expr mapper e =
     let loc = e.exp_loc in
@@ -527,25 +572,23 @@ module Server = struct
     in
     aux @@ unfold_expression e
 
-  let structure_item mapper stri =
-    let loc = stri.str_loc in
-    let str_desc, side = get_section_side stri.str_desc in
-    let stri = {stri with str_desc} in
-    match side with
-    | None | Some `Shared ->
-        Location.raise_errorf ~loc "Eliom ICE: Unspecified section."
-    | Some `Server -> [
-        U.default_mapper.structure_item mapper stri ;
-        server_section ~loc
+  let structure_item mapper orig_stri =
+    let loc = orig_stri.str_loc in
+    let str_desc, side = get_section_side orig_stri.str_desc in
+    let stri = {orig_stri with str_desc} in
+    match declaration_kind str_desc, side with
+    | `Module, _ -> [
+        U.default_mapper.structure_item mapper orig_stri ;
       ]
-    | Some `Client ->
-        let injs = List.map
-            (fun {id;attrs;expr} ->
-               let e = U.default_mapper.expr mapper expr in
-               id, {e with pexp_attributes = e.pexp_attributes @ attrs} )
-            (Collect.injections stri)
-        in
-        [ client_section ~loc injs ]
+    | _, (None | Some `Shared) ->
+        Location.raise_errorf ~loc "Eliom ICE: Unspecified section."
+
+    (* If a structure is only a type declaration, we can copy it directly. *)
+    | `Type, Some (`Server | `Client) -> [
+        Untyp.identity_stri orig_stri ;
+      ]
+    | `Section, Some `Server -> server_section mapper stri
+    | `Section, Some `Client -> client_section mapper stri
 
   let structure mapper {str_items} =
     List.concat @@ List.map (structure_item mapper) str_items
