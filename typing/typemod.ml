@@ -491,14 +491,19 @@ let check_sig_item names loc = function
    name uniqueness.)  If multiple specifications with the same name,
    keep only the last (rightmost) one. *)
 
+(* ELIOM : We use a SideSet instead of a StringSet to record names,
+   in order to handle this kind of modules:
+   val%client x : int
+   val%server x : int
+*)
 let simplify_signature sg =
   let rec aux = function
-    | [] -> [], StringSet.empty
+    | [] -> [], SideSet.empty
     | (Sig_value(id, descr) as component) :: sg ->
         let (sg, val_names) as k = aux sg in
-        let name = Ident.name id in
-        if StringSet.mem name val_names then k
-        else (component :: sg, StringSet.add name val_names)
+        let id_key = (Ident.side id, Ident.name id) in
+        if SideSet.mem id_key val_names then k
+        else (component :: sg, SideSet.add id_key val_names)
     | component :: sg ->
         let (sg, val_names) = aux sg in
         (component :: sg, val_names)
