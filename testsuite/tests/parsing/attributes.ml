@@ -3,16 +3,16 @@
 let (x[@foo]) : unit [@foo] = ()[@foo]
   [@@foo]
 
-type t =
-  | Foo of (t[@foo]) [@foo]
+type 'a[@foo] t =
+  | Foo of ('a t[@foo]) [@foo]
 [@@foo]
 
 [@@@foo]
 
 
 module M = struct
-  type t = {
-    l : (t [@foo]) [@foo]
+  type ('a[@foo], 'b) t = {
+    l : (('a,'b) t [@foo]) [@foo]
   }
     [@@foo]
     [@@foo]
@@ -23,7 +23,7 @@ end[@foo]
 
 module type S = sig
 
-  include (module type of (M[@foo]))[@foo] with type t := M.t[@foo]
+  include (module type of (M[@foo]))[@foo] with type ('a, 'b) t := ('a, 'b) M.t[@foo]
     [@@foo]
 
   [@@@foo]
