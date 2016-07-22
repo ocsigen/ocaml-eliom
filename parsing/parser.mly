@@ -23,7 +23,7 @@ open Parsetree
 open Ast_helper
 open Docstrings
 
-let mktyp d = Typ.mk ~loc:(symbol_rloc()) d
+let mktyp ?attrs d = Typ.mk ~loc:(symbol_rloc()) ?attrs d
 let mkpat d = Pat.mk ~loc:(symbol_rloc()) d
 let mkexp d = Exp.mk ~loc:(symbol_rloc()) d
 let mkmty ?attrs d = Mty.mk ~loc:(symbol_rloc()) ?attrs d
@@ -1925,15 +1925,15 @@ optional_type_parameters:
   | LPAREN optional_type_parameter_list RPAREN  { List.rev $2 }
 ;
 optional_type_parameter:
-    type_variance optional_type_variable        { $2, $1 }
+    type_variance optional_type_variable attributes { mktyp ~attrs:$3 $2, $1 }
 ;
 optional_type_parameter_list:
     optional_type_parameter                              { [$1] }
   | optional_type_parameter_list COMMA optional_type_parameter    { $3 :: $1 }
 ;
 optional_type_variable:
-    QUOTE ident                                 { mktyp(Ptyp_var $2) }
-  | UNDERSCORE                                  { mktyp(Ptyp_any) }
+    QUOTE ident                                 { Ptyp_var $2 }
+  | UNDERSCORE                                  { Ptyp_any }
 ;
 
 
@@ -1943,7 +1943,7 @@ type_parameters:
   | LPAREN type_parameter_list RPAREN           { List.rev $2 }
 ;
 type_parameter:
-    type_variance type_variable                   { $2, $1 }
+    type_variance type_variable attributes      { mktyp ~attrs:$3 $2, $1 }
 ;
 type_variance:
     /* empty */                                 { Invariant }
@@ -1951,7 +1951,7 @@ type_variance:
   | MINUS                                       { Contravariant }
 ;
 type_variable:
-    QUOTE ident                                 { mktyp(Ptyp_var $2) }
+    QUOTE ident                                 { Ptyp_var $2 }
 ;
 type_parameter_list:
     type_parameter                              { [$1] }
