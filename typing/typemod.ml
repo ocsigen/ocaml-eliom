@@ -177,6 +177,7 @@ let merge_constraint initial_env loc sg constr =
                    make (not n) (not c) false
                 )
                 sdecl.ptype_params;
+            type_sideness = Eliom_base.Sideness.gets sdecl.ptype_params;(*ELIOM*)
             type_loc = sdecl.ptype_loc;
             type_newtype_level = None;
             type_attributes = [];

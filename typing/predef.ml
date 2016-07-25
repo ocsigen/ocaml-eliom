@@ -122,6 +122,7 @@ let decl_abstr =
    type_private = Asttypes.Public;
    type_manifest = None;
    type_variance = [];
+   type_sideness = []; (*ELIOM*)
    type_newtype_level = None;
    type_attributes = [];
    type_immediate = false;

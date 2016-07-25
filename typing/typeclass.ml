@@ -1213,6 +1213,7 @@ let temp_abbrev loc env id arity =
        type_private = Public;
        type_manifest = Some ty;
        type_variance = Misc.replicate_list Variance.full arity;
+       type_sideness = Misc.replicate_list Eliom_base.Sideness.Same arity; (*ELIOM*)
        type_newtype_level = None;
        type_loc = loc;
        type_attributes = []; (* or keep attrs from the class decl? *)
@@ -1460,6 +1461,7 @@ let class_infos define_class kind
      type_private = Public;
      type_manifest = Some obj_ty;
      type_variance = List.map (fun _ -> Variance.full) obj_params;
+     type_sideness = Eliom_base.Sideness.gets cl.pci_params; (*ELIOM*)
      type_newtype_level = None;
      type_loc = cl.pci_loc;
      type_attributes = []; (* or keep attrs from cl? *)
@@ -1478,6 +1480,7 @@ let class_infos define_class kind
      type_private = Public;
      type_manifest = Some cl_ty;
      type_variance = List.map (fun _ -> Variance.full) cl_params;
+     type_sideness = Eliom_base.Sideness.gets cl.pci_params; (*ELIOM*)
      type_newtype_level = None;
      type_loc = cl.pci_loc;
      type_attributes = []; (* or keep attrs from cl? *)

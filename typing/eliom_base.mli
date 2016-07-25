@@ -75,3 +75,13 @@ end
 (* Compmisc utils *)
 val client_include_dirs : string list ref
 val server_include_dirs : string list ref
+
+(** Sideness annotations. *)
+module Sideness : sig
+
+  type t = Same | Client
+
+  val get : Parsetree.core_type -> t
+  val gets : (Parsetree.core_type * _) list -> t list
+
+end

@@ -73,6 +73,7 @@ let enter_type env sdecl id =
         begin match sdecl.ptype_manifest with None -> None
         | Some _ -> Some(Ctype.newvar ()) end;
       type_variance = List.map (fun _ -> Variance.full) sdecl.ptype_params;
+      type_sideness = Eliom_base.Sideness.gets sdecl.ptype_params; (*ELIOM*)
       type_newtype_level = None;
       type_loc = sdecl.ptype_loc;
       type_attributes = sdecl.ptype_attributes;
@@ -303,6 +304,7 @@ let transl_declaration env sdecl id =
         type_private = sdecl.ptype_private;
         type_manifest = man;
         type_variance = List.map (fun _ -> Variance.full) params;
+        type_sideness = Eliom_base.Sideness.gets sdecl.ptype_params; (*ELIOM*)
         type_newtype_level = None;
         type_loc = sdecl.ptype_loc;
         type_attributes = sdecl.ptype_attributes;
@@ -1530,6 +1532,7 @@ let transl_value_decl env loc valdecl =
 
 (* Translate a "with" constraint -- much simplified version of
     transl_type_decl. *)
+(*ELIOM TODO: check sideness in the constraints *)
 let transl_with_constraint env id row_path orig_decl sdecl =
   Env.mark_type_used env (Ident.name id) orig_decl;
   reset_type_variables();
@@ -1577,6 +1580,7 @@ let transl_with_constraint env id row_path orig_decl sdecl =
       type_private = priv;
       type_manifest = man;
       type_variance = [];
+      type_sideness = Eliom_base.Sideness.gets sdecl.ptype_params; (*ELIOM*)
       type_newtype_level = None;
       type_loc = sdecl.ptype_loc;
       type_attributes = sdecl.ptype_attributes;
@@ -1624,6 +1628,7 @@ let abstract_type_decl arity =
       type_private = Public;
       type_manifest = None;
       type_variance = replicate_list Variance.full arity;
+      type_sideness = replicate_list Eliom_base.Sideness.Same arity; (*ELIOM*)
       type_newtype_level = None;
       type_loc = Location.none;
       type_attributes = [];

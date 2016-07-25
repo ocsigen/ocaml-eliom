@@ -257,6 +257,7 @@ let type_declaration s decl =
         end;
       type_private = decl.type_private;
       type_variance = decl.type_variance;
+      type_sideness = decl.type_sideness; (*ELIOM*)
       type_newtype_level = None;
       type_loc = loc s decl.type_loc;
       type_attributes = attrs s decl.type_attributes;

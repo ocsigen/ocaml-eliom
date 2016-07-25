@@ -304,3 +304,27 @@ module Section = struct
     in attr txt loc
 
 end
+
+module Sideness = struct
+  open Parsetree
+
+  type t = Same | Client
+
+  let get ptyp : t =
+    let has_attr =
+      List.exists (function
+        | {Location.txt = "client"|"eliom.client" }, payload ->
+            begin match payload with
+            | PStr [] -> true
+            | _ -> error ~loc:ptyp.ptyp_loc
+                  "Malformed sideness annotation. It should be [@client] \
+                   or [@eliom.client]."
+            end
+        | _ -> false)
+        ptyp.ptyp_attributes
+    in
+    if has_attr then Client else Same
+
+  let gets l = List.map (fun (x,_) -> get x) l
+
+end
