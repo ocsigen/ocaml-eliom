@@ -340,13 +340,6 @@ let rec transl_type env policy styp =
     ctyp (Ttyp_tuple ctys) ty
   | Ptyp_constr(lid, stl) ->
       let (path, decl) = find_type env styp.ptyp_loc lid.txt in
-      (* ELIOM *)
-      (* Switch side to client when looking inside [_ fragment]. *)
-      begin if Eliom_typing.is_fragment ~loc ~env path
-        then Eliom_base.in_side `Client
-        else fun f -> f ()
-      end @@ fun () ->
-      (* /ELIOM *)
       let stl =
         match stl with
         | [ {ptyp_desc=Ptyp_any} as t ] when decl.type_arity > 1 ->
@@ -357,7 +350,17 @@ let rec transl_type env policy styp =
         raise(Error(styp.ptyp_loc, env,
                     Type_arity_mismatch(lid.txt, decl.type_arity,
                                         List.length stl)));
-      let args = List.map (transl_type env policy) stl in
+      (*ELIOM*)
+      (* Switch side to client when looking inside type constructor
+         whose parameters have been marked with [@client]. *)
+      assert (decl.type_arity = List.length decl.type_sideness) ;
+      let args =
+        List.map2
+          (fun x side ->
+             Eliom_base.Sideness.wrap side (transl_type env policy) x, side)
+          stl decl.type_sideness
+      in
+      (*/ELIOM*)
       let params = instance_list decl.type_params in
       let unify_param =
         match decl.type_manifest with
@@ -366,10 +369,13 @@ let rec transl_type env policy styp =
             if (repr ty).level = Btype.generic_level then unify_var else unify
       in
       List.iter2
-        (fun (sty, cty) ty' ->
-           try unify_param env ty' cty.ctyp_type with Unify trace ->
+        (fun (sty, (cty, side(*ELIOM*)) ) ty' ->
+            try
+              Eliom_base.Sideness.wrap side (*ELIOM*)
+              (unify_param env ty') cty.ctyp_type with Unify trace ->
              raise (Error(sty.ptyp_loc, env, Type_mismatch (swap_list trace))))
         (List.combine stl args) params;
+      let args = List.map fst args in (*ELIOM*)
       let constr =
         newconstr path (List.map (fun ctyp -> ctyp.ctyp_type) args) in
       begin try

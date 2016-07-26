@@ -327,4 +327,8 @@ module Sideness = struct
 
   let gets l = List.map (fun (x,_) -> get x) l
 
+  let wrap (side:t) f x = match side with
+    | Same -> f x
+    | Client -> in_side `Client (fun () -> f x)
+
 end
