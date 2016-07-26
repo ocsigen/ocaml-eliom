@@ -164,6 +164,7 @@ let common_initial_env add_type add_extension empty_env =
     {decl_abstr with
      type_params = [tvar];
      type_arity = 1;
+     type_sideness = [Eliom_base.Sideness.Same];
      type_variance = [Variance.full]}
   and decl_list =
     let tvar = newgenvar() in
@@ -172,6 +173,7 @@ let common_initial_env add_type add_extension empty_env =
      type_arity = 1;
      type_kind =
      Type_variant([cstr ident_nil []; cstr ident_cons [tvar; type_list tvar]]);
+     type_sideness = [Eliom_base.Sideness.Same];
      type_variance = [Variance.covariant]}
   and decl_option =
     let tvar = newgenvar() in
@@ -179,12 +181,14 @@ let common_initial_env add_type add_extension empty_env =
      type_params = [tvar];
      type_arity = 1;
      type_kind = Type_variant([cstr ident_none []; cstr ident_some [tvar]]);
+     type_sideness = [Eliom_base.Sideness.Same];
      type_variance = [Variance.covariant]}
   and decl_lazy_t =
     let tvar = newgenvar() in
     {decl_abstr with
      type_params = [tvar];
      type_arity = 1;
+     type_sideness = [Eliom_base.Sideness.Same];
      type_variance = [Variance.covariant]}
   in
 
