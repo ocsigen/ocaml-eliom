@@ -429,6 +429,7 @@ module Client = struct
     let loc = expr.exp_loc in
     let id = Name.make_injection_id ~loc id in
     (* [%expr Eliom_runtime.get_injection [%e id]][@metaloc loc] *)
+    (* TODO Emit type annotation to constraint the type of the injection. *)
     app ~loc "Eliom_runtime.get_injection" [id]
 
 
@@ -537,6 +538,7 @@ module Server = struct
     (* [%stri *)
     (*   let () = Eliom_runtime.close_client_section [%e e_hash] [%e l] *)
     (* ][@metaloc loc] *)
+    (* TODO lift injection before, with a let-and declaration, to preserve evaluation order. *)
     [ unit_str ~loc @@
       app ~loc "Eliom_runtime.close_client_section" [e_hash ; l]
     ]
@@ -550,6 +552,7 @@ module Server = struct
     (*     [%e id] *)
     (*     [%e arg] *)
     (* ][@metaloc loc] *)
+    (* TODO Add a type annotation for the fragment. *)
     Exp.apply ~loc (elid ~loc "Eliom_runtime.fragment") [
       Labelled "pos", position loc ;
       Nolabel, id ;
