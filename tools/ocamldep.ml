@@ -23,8 +23,8 @@ let ppf = Format.err_formatter
 type file_kind = ML | MLI;;
 
 let load_path = ref ([] : (string * string array) list)
-let ml_synonyms = ref [".ml"]
-let mli_synonyms = ref [".mli"]
+let ml_synonyms = ref [".ml"; ".eliom"]
+let mli_synonyms = ref [".mli"; ".eliomi"]
 let native_only = ref false
 let error_occurred = ref false
 let raw_dependencies = ref false

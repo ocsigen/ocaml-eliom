@@ -267,6 +267,8 @@ let rec add_expr bv exp =
       | Pstr_eval ({ pexp_desc = Pexp_construct (c, None) }, _) -> add bv c
       | _ -> handle_extension e
       end
+  | e when Eliom_base.Fragment.check e -> add_expr bv (Eliom_base.Fragment.get e)
+  | e when Eliom_base.Injection.check e -> add_expr bv (Eliom_base.Injection.get e)
   | Pexp_extension e -> handle_extension e
   | Pexp_unreachable -> ()
 
