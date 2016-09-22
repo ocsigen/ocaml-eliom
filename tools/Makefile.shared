@@ -45,7 +45,7 @@ CAMLDEP_IMPORTS=timings.cmo misc.cmo config.cmo identifiable.cmo numbers.cmo \
   syntaxerr.cmo ast_helper.cmo parser.cmo lexer.cmo parse.cmo \
   ccomp.cmo ast_mapper.cmo ast_iterator.cmo \
   builtin_attributes.cmo ast_invariants.cmo \
-  pparse.cmo compenv.cmo
+  pparse.cmo compenv.cmo eliom_base.cmo
 
 ocamldep: depend.cmi $(CAMLDEP_OBJ)
 	$(CAMLC) $(LINKFLAGS) -compat-32 -o ocamldep $(CAMLDEP_IMPORTS) \

@@ -544,6 +544,8 @@ let _ =
   add_to_list first_include_dirs Filename.current_dir_name;
   Compenv.readenv ppf Before_args;
   Arg.parse [
+     "-mode", Arg.String (fun s -> Eliom_base.(set_mode @@ mode_of_string s)),
+        "<mode>  Set the compilation mode. Can be either ocaml, client, server or eliom";
      "-absname", Arg.Set Location.absname,
         " Show absolute filenames in error messages";
      "-all", Arg.Set all_dependencies,

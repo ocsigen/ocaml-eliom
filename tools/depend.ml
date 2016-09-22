@@ -267,8 +267,8 @@ let rec add_expr bv exp =
       | Pstr_eval ({ pexp_desc = Pexp_construct (c, None) }, _) -> add bv c
       | _ -> handle_extension e
       end
-  | e when Eliom_base.Fragment.check e -> add_expr bv (Eliom_base.Fragment.get e)
-  | e when Eliom_base.Injection.check e -> add_expr bv (Eliom_base.Injection.get e)
+  | _ when Eliom_base.Fragment.check exp -> add_expr bv (Eliom_base.Fragment.get exp)
+  | _ when Eliom_base.Injection.check exp -> add_expr bv (Eliom_base.Injection.get exp)
   | Pexp_extension e -> handle_extension e
   | Pexp_unreachable -> ()
 
@@ -374,6 +374,10 @@ and add_sig_item (bv, m) item =
   | Psig_class_type cdtl ->
       List.iter (add_class_type_declaration bv) cdtl; (bv, m)
   | Psig_attribute _ -> (bv, m)
+  | _ when Eliom_base.Section.check_sig item ->
+      List.fold_left add_sig_item
+        (bv, m)
+        (snd @@ Eliom_base.Section.get_sig item)
   | Psig_extension (e, _) ->
       handle_extension e;
       (bv, m)
@@ -465,6 +469,8 @@ and add_struct_item (bv, m) item : _ StringMap.t * _ StringMap.t =
       let add = StringMap.fold StringMap.add m' in
       (add bv, add m)
   | Pstr_attribute _ -> (bv, m)
+  | _ when Eliom_base.Section.check item ->
+      add_struct_item (bv,m) (snd @@ Eliom_base.Section.get item)
   | Pstr_extension (e, _) ->
       handle_extension e;
       (bv, m)
