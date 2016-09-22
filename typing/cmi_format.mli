@@ -17,6 +17,8 @@ type pers_flags =
   | Rectypes
   | Deprecated of string
   | Opaque
+  (* ELIOM *)
+  | Side of Eliom_base.side
 
 type cmi_infos = {
     cmi_name : string;

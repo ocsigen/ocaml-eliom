@@ -401,6 +401,7 @@ let save_pers_struct crc ps =
     (function
         | Rectypes -> ()
         | Deprecated _ -> ()
+        | Side _ -> () (* ELIOM *)
         | Opaque -> add_imported_opaque modname)
     ps.ps_flags;
   Consistbl.set crc_units modname crc ps.ps_filename;
@@ -446,6 +447,7 @@ let read_pers_struct check id filename =
             if not !Clflags.recursive_types then
               error (Need_recursive_types(ps.ps_name, !current_unit))
         | Deprecated _ -> ()
+        | Side _ -> () (* ELIOM *)
         | Opaque -> add_imported_opaque modname)
     ps.ps_flags;
   if check then check_consistency ps;
@@ -463,7 +465,7 @@ let find_pers_struct check id =
       let filename, side =
         try
           let _ = load_path in (* Avoid touching "open Config". *)
-          Eliom_base.find_in_load_path (name ^ ".cmi")
+          Eliom_base.find_in_load_path name ~ext:".cmi"
         with Not_found ->
           Hashtbl.add persistent_structures id None;
           raise Not_found

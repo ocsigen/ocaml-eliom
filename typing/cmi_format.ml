@@ -17,6 +17,8 @@ type pers_flags =
   | Rectypes
   | Deprecated of string
   | Opaque
+  (* ELIOM *)
+  | Side of Eliom_base.side
 
 type error =
     Not_an_interface of string
@@ -67,9 +69,17 @@ let read_cmi filename =
     let cmi = input_cmi ic in
     close_in ic;
     (* ELIOM *)
-    let side =
-      if buffer = Eliom_types.cmi_magic_number then `Shared
-      else Eliom_base.get_side ()
+    let rec get_side = function
+      | Side s :: t -> t, (s :> Eliom_base.shside)
+      | h::t -> let t, s = get_side t in (h::t), s
+      | [] -> [], `Noside
+    in
+    let cmi, side =
+      if buffer = Eliom_types.cmi_magic_number then
+        let cmi_flags, side = get_side cmi.cmi_flags in
+        {cmi with cmi_flags}, side
+      else
+        cmi, Eliom_base.get_side ()
     in
     (* We don't change sides inside the module if
        - The module already has sides (ie. is an eliom cmi)
@@ -97,6 +107,12 @@ let output_cmi filename oc cmi =
     then Eliom_types.cmi_magic_number
     else
       Config.cmi_magic_number
+  in
+  let cmi =
+    match Eliom_base.get_side () with
+    | `Noside -> cmi
+    | (`Client | `Server | `Shared) as side ->
+        {cmi with cmi_flags = Side side :: cmi.cmi_flags}
   in
   (* /ELIOM *)
   output_string oc cmi_magic_number;

@@ -120,16 +120,20 @@ let set_load_path ~client ~server =
   server_load_path := List.rev server ;
   ()
 
-let eliom_find file =
+let eliom_find filename ext =
   let side = get_side () in
   try
-    Misc.find_in_path_uncap !Config.load_path file, `Noside
+    Misc.find_in_path_uncap !Config.load_path (filename ^ ext), `Noside
   with Not_found as exn ->
-    let l = match side with
-      | `Server -> !server_load_path
-      | `Client -> !client_load_path
+    let l, extpos = match side with
+      | `Server -> !server_load_path, ".server"
+      | `Client -> !client_load_path, ".client"
       | _ -> raise exn
-    in Misc.find_in_path_uncap l file, side
+    in
+    try
+      Misc.find_in_path_uncap l (filename ^ ext), side
+    with Not_found ->
+      Misc.find_in_path_uncap !Config.load_path (filename ^ extpos ^ ext), side
 
 let client_find file =
   Misc.find_in_path_uncap (!Config.load_path @ !client_load_path) file
@@ -137,11 +141,13 @@ let client_find file =
 let server_find file =
   Misc.find_in_path_uncap (!Config.load_path @ !server_load_path) file
 
-let find_in_load_path file = match !mode with
+let find_in_load_path modname ~ext =
+  let file = modname ^ ext in
+  match !mode with
   | OCaml -> Misc.find_in_path_uncap !Config.load_path file, `Noside
   | Server -> server_find file, `Noside
   | Client -> client_find file, `Noside
-  | Eliom -> eliom_find file
+  | Eliom -> eliom_find modname ext
 
 (** Utils *)
 

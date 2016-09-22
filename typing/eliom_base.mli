@@ -41,7 +41,19 @@ val get_side : unit -> [>shside]
 (** Handling of client/server load path. *)
 
 val set_load_path : client:string list -> server:string list -> unit
-val find_in_load_path : string -> string * shside
+
+(** Try to find the given file with the given extension.
+    When [mode] is [OCaml] [Server] or [Client, behaves like
+    {!Misc.find_in_path_uncap} with the appropriate path.
+
+    When in [Eliom] mode, tries to magically find where the file lives.
+    For example, [find_in_load_path "Foo" ".cmi"] when [get_side () = `Client]
+    will try, in this order:
+    - foo.cmo and Foo.cmo in main path (-I)
+    - foo.cmo and Foo.cmo in client path (-client-I)
+    - Foo.client.cmo and foo.client.cmo in main path (-I)
+*)
+val find_in_load_path : string -> ext:string -> string * shside
 
 (** Error *)
 

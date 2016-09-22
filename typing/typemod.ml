@@ -1641,7 +1641,7 @@ let type_implementation sourcefile outputprefix modulename initial_env ast =
       let intf_file =
         try
           (* ELIOM *)
-          fst @@ Eliom_base.find_in_load_path (modulename ^ ".cmi")
+          fst @@ Eliom_base.find_in_load_path modulename ~ext:".cmi"
           (* /ELIOM *)
         with Not_found ->
           raise(Error(Location.in_file sourcefile, Env.empty,
