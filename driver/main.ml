@@ -28,12 +28,19 @@ let process_implementation_file ppf name =
   objfiles := (opref ^ ".cmo") :: !objfiles
 
 (* ELIOM *)
-let process_eliom_file ppf name =
+let process_eliom_implementation_file ppf name =
   let opref = output_prefix name in
   Eliom_base.(set_mode Eliom) ;
   Compile.eliom_implementation ppf name opref;
   Eliom_base.(set_mode OCaml) ;
   objfiles := (opref ^ ".server.cmo") :: !objfiles
+
+let process_eliom_interface_file ppf name =
+  let opref = output_prefix name in
+  Eliom_base.(set_mode Eliom) ;
+  Compile.interface ppf name opref;
+  Eliom_base.(set_mode OCaml) ;
+  if !make_package then objfiles := (opref ^ ".cmi") :: !objfiles
 (* /ELIOM *)
 
 let process_file ppf name =
@@ -42,7 +49,9 @@ let process_file ppf name =
     process_implementation_file ppf name
   (* ELIOM *)
   else if Filename.check_suffix name ".eliom" then
-    process_eliom_file ppf name
+    process_eliom_implementation_file ppf name
+  else if Filename.check_suffix name ".eliomi" then
+    process_eliom_interface_file ppf name
   (* /ELIOM *)
   else if Filename.check_suffix name !Config.interface_suffix then
     process_interface_file ppf name
