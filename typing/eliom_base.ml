@@ -135,18 +135,23 @@ let eliom_find filename ext =
     with Not_found ->
       Misc.find_in_path_uncap !Config.load_path (filename ^ extpos ^ ext), side
 
-let client_find file =
-  Misc.find_in_path_uncap (!Config.load_path @ !client_load_path) file
+let client_find modname ext =
+  try
+    Misc.find_in_path_uncap (!Config.load_path @ !client_load_path) (modname^ext)
+  with Not_found ->
+    Misc.find_in_path_uncap !Config.load_path (modname ^ ".client" ^ ext)
 
-let server_find file =
-  Misc.find_in_path_uncap (!Config.load_path @ !server_load_path) file
+let server_find modname ext =
+  try
+    Misc.find_in_path_uncap (!Config.load_path @ !server_load_path) (modname ^ ext)
+  with Not_found ->
+    Misc.find_in_path_uncap !Config.load_path (modname ^ ".server" ^ ext)
 
 let find_in_load_path modname ~ext =
-  let file = modname ^ ext in
   match !mode with
-  | OCaml -> Misc.find_in_path_uncap !Config.load_path file, `Noside
-  | Server -> server_find file, `Noside
-  | Client -> client_find file, `Noside
+  | OCaml -> Misc.find_in_path_uncap !Config.load_path (modname^ext), `Noside
+  | Server -> server_find modname ext, `Noside
+  | Client -> client_find modname ext, `Noside
   | Eliom -> eliom_find modname ext
 
 (** Utils *)
