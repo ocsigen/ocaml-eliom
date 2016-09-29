@@ -46,38 +46,41 @@ let check_consistency file_name unit crc =
   begin try
     List.iter
       (fun (name, crco) ->
-        interfaces := name :: !interfaces;
+        let elt = (name, Eliom_base.get_mode_as_side()) in
+        interfaces := elt :: !interfaces;
         match crco with
           None -> ()
         | Some crc ->
             if name = unit.ui_name
-            then Consistbl.set crc_interfaces name crc file_name
-            else Consistbl.check crc_interfaces name crc file_name)
+            then Consistbl.set crc_interfaces elt crc file_name
+            else Consistbl.check crc_interfaces elt crc file_name)
       unit.ui_imports_cmi
   with Consistbl.Inconsistency(name, user, auth) ->
-    raise(Error(Inconsistent_interface(name, user, auth)))
+    raise(Error(Inconsistent_interface(fst name, user, auth)))
   end;
   begin try
     List.iter
       (fun (name, crco) ->
-        implementations := name :: !implementations;
+        let elt = (name, Eliom_base.get_mode_as_side()) in
+        implementations := elt :: !implementations;
         match crco with
             None ->
               if List.mem name !cmx_required then
                 raise(Error(Missing_cmx(file_name, name)))
           | Some crc ->
-              Consistbl.check crc_implementations name crc file_name)
+              Consistbl.check crc_implementations elt crc file_name)
       unit.ui_imports_cmx
   with Consistbl.Inconsistency(name, user, auth) ->
-    raise(Error(Inconsistent_implementation(name, user, auth)))
+    raise(Error(Inconsistent_implementation(fst name, user, auth)))
   end;
   begin try
     let source = List.assoc unit.ui_name !implementations_defined in
     raise (Error(Multiple_definition(unit.ui_name, file_name, source)))
   with Not_found -> ()
   end;
-  implementations := unit.ui_name :: !implementations;
-  Consistbl.set crc_implementations unit.ui_name crc file_name;
+  let elt = unit.ui_name, Eliom_base.get_mode_as_side () in
+  implementations := elt :: !implementations;
+  Consistbl.set crc_implementations elt crc file_name;
   implementations_defined :=
     (unit.ui_name, file_name) :: !implementations_defined;
   if unit.ui_symbol <> unit.ui_name then

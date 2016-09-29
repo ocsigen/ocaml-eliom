@@ -363,10 +363,10 @@ let persistent_structures =
 
 let crc_units = Consistbl.create()
 
-let imported_units = ref StringSet.empty
+let imported_units = ref Eliom_base.SideSet.empty
 
 let add_import s =
-  imported_units := StringSet.add s !imported_units
+  imported_units := Eliom_base.SideSet.add s !imported_units
 
 let imported_opaque_units = ref StringSet.empty
 
@@ -375,7 +375,7 @@ let add_imported_opaque s =
 
 let clear_imports () =
   Consistbl.clear crc_units;
-  imported_units := StringSet.empty;
+  imported_units := Eliom_base.SideSet.empty;
   imported_opaque_units := StringSet.empty
 
 let check_consistency ps =
@@ -397,6 +397,7 @@ let save_pers_struct crc ps =
   let modname = ps.ps_name in
   let id = Ident.create_persistent modname in (* ELIOM *)
   Hashtbl.add persistent_structures id (Some ps);
+  let elt = (modname, Ident.side id) in (* ELIOM *)
   List.iter
     (function
         | Rectypes -> ()
@@ -404,12 +405,11 @@ let save_pers_struct crc ps =
         | Side _ -> () (* ELIOM *)
         | Opaque -> add_imported_opaque modname)
     ps.ps_flags;
-  Consistbl.set crc_units modname crc ps.ps_filename;
-  add_import modname
+  Consistbl.set crc_units elt crc ps.ps_filename;
+  add_import elt
 
 let read_pers_struct check id filename =
   let modname = Ident.name id in (* ELIOM *)
-  add_import modname;
   let cmi, side(*ELIOM*) = read_cmi filename in
   (* ELIOM *)
   if side <> Ident.side id then begin
@@ -419,9 +419,16 @@ let read_pers_struct check id filename =
     Format.eprintf "Now is %a.@." Ident.print id ;
   end ;
   (* /ELIOM *)
+  add_import (modname, side);
   let name = cmi.cmi_name in
   let sign = cmi.cmi_sign in
   let crcs = cmi.cmi_crcs in
+  (* ELIOM *)
+  let crcs =
+    List.map (fun (s, digest) -> Eliom_base.SideString.of_string s, digest)
+      crcs
+  in
+  (* /ELIOM *)
   let flags = cmi.cmi_flags in
   let deprecated =
     List.fold_left (fun acc -> function Deprecated s -> Some s | _ -> acc) None
@@ -516,7 +523,7 @@ let check_pers_struct name =
     (* PR#6843: record the weak dependency ([add_import]) regardless of
        whether the check suceeds, to help make builds more
        deterministic. *)
-    add_import @@ Ident.name name;
+    add_import (Ident.name name, Ident.side name);
     if (Warnings.is_active (Warnings.No_cmi_file("", None))) then
       !add_delayed_check_forward
         (fun () -> check_pers_struct name)
@@ -1840,7 +1847,7 @@ let crc_of_unit name =
   let ps = find_pers_struct id in
   let crco =
     try
-      List.assoc name ps.ps_crcs
+      List.assoc (name, Ident.side id) ps.ps_crcs
     with Not_found ->
       assert false
   in
@@ -1851,7 +1858,7 @@ let crc_of_unit name =
 (* Return the list of imported interfaces with their CRCs *)
 
 let imports () =
-  Consistbl.extract (StringSet.elements !imported_units) crc_units
+  Consistbl.extract (Eliom_base.SideSet.elements !imported_units) crc_units
 
 (* Returns true if [s] is an opaque imported module  *)
 let is_imported_opaque s =
@@ -1874,10 +1881,18 @@ let save_signature_with_imports ~deprecated sg modname filename imports =
   in
   let oc = open_out_bin filename in
   try
+    (* ELIOM *)
+    let cmi_crcs =
+      List.map
+        (fun (s, digest) -> Eliom_base.SideString.to_string s, digest)
+        imports
+    in
+    let side = Eliom_base.get_mode_as_side () in
+    (* /ELIOM *)
     let cmi = {
       cmi_name = modname;
       cmi_sign = sg;
-      cmi_crcs = imports;
+      cmi_crcs ;
       cmi_flags = flags;
     } in
     let crc = output_cmi filename oc cmi in
@@ -1891,7 +1906,7 @@ let save_signature_with_imports ~deprecated sg modname filename imports =
       { ps_name = modname;
         ps_sig = lazy (Subst.signature Subst.identity sg);
         ps_comps = comps;
-        ps_crcs = (cmi.cmi_name, Some crc) :: imports;
+        ps_crcs = ((cmi.cmi_name, side), Some crc) :: imports;
         ps_filename = filename;
         ps_flags = cmi.cmi_flags;
       } in
@@ -2040,10 +2055,10 @@ let report_error ppf = function
       "Wrong file naming: %a@ contains the compiled interface for @ \
        %s when %s was expected"
       Location.print_filename filename ps_name modname
-  | Inconsistent_import(name, source1, source2) -> fprintf ppf
+  | Inconsistent_import((name, side), source1, source2) -> fprintf ppf
       "@[<hov>The files %a@ and %a@ \
-              make inconsistent assumptions@ over interface %s@]"
-      Location.print_filename source1 Location.print_filename source2 name
+              make inconsistent assumptions@ over interface %s in side %a@]"
+      Location.print_filename source1 Location.print_filename source2 name Eliom_base.pp side
   | Need_recursive_types(import, export) ->
       fprintf ppf
         "@[<hov>Unit %s imports from %s, which uses recursive types.@ %s@]"

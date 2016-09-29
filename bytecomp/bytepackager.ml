@@ -232,8 +232,14 @@ let package_object_files ppf files targetfile targetname coercion =
     let pos_final = pos_out oc in
     let imports =
       List.filter
-        (fun (name, crc) -> not (List.mem name unit_names))
+        (fun ((name,_), crc) -> not (List.mem name unit_names))
         (Bytelink.extract_crc_interfaces()) in
+    (* ELIOM *)
+    let imports =
+      List.map (fun (elt, crc) -> Eliom_base.SideString.to_string elt, crc)
+        imports
+    in
+    (* /ELIOM *)
     let compunit =
       { cu_name = targetname;
         cu_pos = pos_code;

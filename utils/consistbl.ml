@@ -15,7 +15,11 @@
 
 (* Consistency tables: for checking consistency of module CRCs *)
 
-type elt = string
+(* ELIOM *)
+type side = [`Noside | `Server | `Client | `Shared]
+type elt = string * side
+(* /ELIOM *)
+
 type t = (elt, Digest.t * string) Hashtbl.t
 
 let create () = Hashtbl.create 13
@@ -45,7 +49,11 @@ let set tbl name crc source = Hashtbl.add tbl name (crc, source)
 let source tbl name = snd (Hashtbl.find tbl name)
 
 let extract l tbl =
-  let l = List.sort_uniq String.compare l in
+  let compare (n1,s1) (n2,s2) =
+    let x = String.compare n1 n2 in
+    if x = 0 then compare s1 s2 else x
+  in
+  let l = List.sort_uniq compare l in
   List.fold_left
     (fun assc name ->
        try

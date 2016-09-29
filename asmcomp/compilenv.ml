@@ -353,7 +353,9 @@ let write_unit_info info filename =
   close_out oc
 
 let save_unit_info filename =
-  current_unit.ui_imports_cmi <- Env.imports();
+  current_unit.ui_imports_cmi <-
+    List.map (fun (name,crc) -> Eliom_base.SideString.to_string name, crc) @@
+    Env.imports();
   write_unit_info current_unit filename
 
 let current_unit_linkage_name () =

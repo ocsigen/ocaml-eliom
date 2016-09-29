@@ -85,17 +85,18 @@ let check_consistency file_name cu =
          match crco with
            None -> ()
          | Some crc ->
+             let elt = (name, `Noside (*TODO*)) in (*ELIOM*)
              if name = cu.cu_name then
-               Consistbl.set !crc_interfaces name crc file_name
+               Consistbl.set !crc_interfaces elt crc file_name
              else if !allow_extension then
-               Consistbl.check !crc_interfaces name crc file_name
+               Consistbl.check !crc_interfaces elt crc file_name
              else
-               Consistbl.check_noadd !crc_interfaces name crc file_name)
+               Consistbl.check_noadd !crc_interfaces elt crc file_name)
       cu.cu_imports
   with Consistbl.Inconsistency(name, user, auth) ->
-         raise(Error(Inconsistent_import name))
+         raise(Error(Inconsistent_import (fst name)))
      | Consistbl.Not_available(name) ->
-         raise(Error(Unavailable_unit name))
+         raise(Error(Unavailable_unit (fst name)))
 
 (* Empty the crc_interfaces table *)
 
@@ -106,20 +107,20 @@ let clear_available_units () =
 (* Allow only access to the units with the given names *)
 
 let allow_only names =
-  Consistbl.filter (fun name -> List.mem name names) !crc_interfaces;
+  Consistbl.filter (fun (name,_) -> List.mem name names) !crc_interfaces;
   allow_extension := false
 
 (* Prohibit access to the units with the given names *)
 
 let prohibit names =
-  Consistbl.filter (fun name -> not (List.mem name names)) !crc_interfaces;
+  Consistbl.filter (fun (name,_) -> not (List.mem name names)) !crc_interfaces;
   allow_extension := false
 
 (* Initialize the crc_interfaces table with a list of units with fixed CRCs *)
 
 let add_available_units units =
   List.iter
-    (fun (unit, crc) -> Consistbl.set !crc_interfaces unit crc "")
+    (fun (unit, crc) -> Consistbl.set !crc_interfaces (unit,`Noside) crc "")
     units
 
 (* Default interface CRCs: those found in the current executable *)
@@ -131,7 +132,7 @@ let default_available_units () =
     (fun (unit, crco) ->
        match crco with
          None -> ()
-       | Some crc -> Consistbl.set !crc_interfaces unit crc "")
+       | Some crc -> Consistbl.set !crc_interfaces (unit,`Noside) crc "")
     !default_crcs;
   allow_extension := true
 

@@ -389,7 +389,9 @@ let to_file outchan unit_name objfile code =
       cu_pos = pos_code;
       cu_codesize = !out_position;
       cu_reloc = List.rev !reloc_info;
-      cu_imports = Env.imports();
+      cu_imports =
+        List.map (fun (x,d) -> Eliom_base.SideString.to_string x, d) @@
+        Env.imports();
       cu_primitives = List.map Primitive.byte_name
                                !Translmod.primitive_declarations;
       cu_force_link = false;

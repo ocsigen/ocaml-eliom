@@ -167,6 +167,12 @@ let record_value_dependency vd1 vd2 =
 let save_cmt filename modname binary_annots sourcefile initial_env sg =
   if !Clflags.binary_annotations && not !Clflags.print_types then begin
     let imports = Env.imports () in
+    (* ELIOM *)
+    let imports = List.map
+        (fun (s, digest) -> Eliom_base.SideString.to_string s, digest)
+        imports
+    in
+    (* /ELIOM *)
     let flags =
       List.concat [
         if !Clflags.recursive_types then [Cmi_format.Rectypes] else [];

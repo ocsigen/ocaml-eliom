@@ -108,16 +108,17 @@ let check_consistency ppf filename cu =
   try
     List.iter
       (fun (name, crco) ->
-       Env.add_import name;
+       let elt = (name, Eliom_base.get_side ()) in
+       Env.add_import elt;
        match crco with
          None -> ()
        | Some crc->
-           Consistbl.check Env.crc_units name crc filename)
+           Consistbl.check Env.crc_units elt crc filename)
       cu.cu_imports
   with Consistbl.Inconsistency(name, user, auth) ->
     fprintf ppf "@[<hv 0>The files %s@ and %s@ \
                  disagree over interface %s@]@."
-            user auth name;
+            user auth (fst name);
     raise Load_failed
 
 let load_compunit ic filename ppf compunit =

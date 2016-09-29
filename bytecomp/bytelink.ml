@@ -167,16 +167,17 @@ let check_consistency ppf file_name cu =
   begin try
     List.iter
       (fun (name, crco) ->
-        interfaces := name :: !interfaces;
+         let elt = Eliom_base.SideString.of_string name in
+        interfaces := elt :: !interfaces;
         match crco with
           None -> ()
         | Some crc ->
             if name = cu.cu_name
-            then Consistbl.set crc_interfaces name crc file_name
-            else Consistbl.check crc_interfaces name crc file_name)
+            then Consistbl.set crc_interfaces elt crc file_name
+            else Consistbl.check crc_interfaces elt crc file_name)
       cu.cu_imports
   with Consistbl.Inconsistency(name, user, auth) ->
-    raise(Error(Inconsistent_import(name, user, auth)))
+    raise(Error(Inconsistent_import(fst name, user, auth)))
   end;
   begin try
     let source = List.assoc cu.cu_name !implementations_defined in

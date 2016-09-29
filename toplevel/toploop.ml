@@ -483,11 +483,12 @@ let _ =
   Compmisc.init_path false;
   List.iter
     (fun (name, crco) ->
-      Env.add_import name;
+      let elt = name, Eliom_base.get_side () in
+      Env.add_import elt;
       match crco with
         None -> ()
       | Some crc->
-          Consistbl.set Env.crc_units name crc Sys.executable_name)
+          Consistbl.set Env.crc_units elt crc Sys.executable_name)
     crc_intfs
 
 let load_ocamlinit ppf =

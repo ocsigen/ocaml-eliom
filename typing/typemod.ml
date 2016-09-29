@@ -1736,7 +1736,8 @@ let package_units initial_env objfiles cmifile modulename =
     Includemod.compunit initial_env "(obtained by packing)" sg mlifile dclsig
   end else begin
     (* Determine imports *)
-    let unit_names = List.map fst units in
+    let unit_names =
+      List.map (fun (id,_) -> (Ident.name id, Ident.side id)) units in
     let imports =
       List.filter
         (fun (name, crc) -> not (List.mem name unit_names))

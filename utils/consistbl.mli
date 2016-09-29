@@ -15,7 +15,11 @@
 
 (* Consistency tables: for checking consistency of module CRCs *)
 
-type elt = string
+(* ELIOM *)
+type side = [`Noside | `Server | `Client | `Shared]
+type elt = string * side
+(* /ELIOM *)
+
 type t
 
 val create: unit -> t
