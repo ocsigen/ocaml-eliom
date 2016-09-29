@@ -36,9 +36,9 @@ exception Error of error
 (* Consistency check between interfaces and implementations *)
 
 let crc_interfaces = Consistbl.create ()
-let interfaces = ref ([] : string list)
+let interfaces = ref ([] : Consistbl.elt list)
 let crc_implementations = Consistbl.create ()
-let implementations = ref ([] : string list)
+let implementations = ref ([] : Consistbl.elt list)
 let implementations_defined = ref ([] : (string * string) list)
 let cmx_required = ref ([] : string list)
 

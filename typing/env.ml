@@ -58,7 +58,7 @@ let prefixed_sg = Hashtbl.create 113
 
 type error =
   | Illegal_renaming of string * string * string
-  | Inconsistent_import of string * string * string
+  | Inconsistent_import of Consistbl.elt * string * string
   | Need_recursive_types of string * string
   | Missing_module of Location.t * Path.t * Path.t
   | Illegal_value_name of Location.t * string
@@ -349,7 +349,7 @@ type pers_struct =
   { ps_name: string;
     ps_sig: signature Lazy.t;
     ps_comps: module_components;
-    ps_crcs: (string * Digest.t option) list;
+    ps_crcs: (Consistbl.elt * Digest.t option) list;
     ps_filename: string;
     ps_flags: pers_flags list }
 

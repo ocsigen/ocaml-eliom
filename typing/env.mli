@@ -178,7 +178,7 @@ val save_signature:
         (* Arguments: signature, module name, file name. *)
 val save_signature_with_imports:
   deprecated:string option ->
-  signature -> string -> string -> (string * Digest.t option) list
+  signature -> string -> string -> (Consistbl.elt * Digest.t option) list
   -> signature
         (* Arguments: signature, module name, file name,
            imported units with their CRCs. *)
@@ -189,7 +189,7 @@ val crc_of_unit: string -> Digest.t
 
 (* Return the set of compilation units imported, with their CRC *)
 
-val imports: unit -> (string * Digest.t option) list
+val imports: unit -> (Consistbl.elt * Digest.t option) list
 
 (* [is_imported_opaque md] returns true if [md] is an opaque imported module  *)
 val is_imported_opaque: string -> bool
@@ -197,7 +197,7 @@ val is_imported_opaque: string -> bool
 (* Direct access to the table of imported compilation units with their CRC *)
 
 val crc_units: Consistbl.t
-val add_import: string -> unit
+val add_import: Consistbl.elt -> unit
 
 (* Summaries -- compact representation of an environment, to be
    exported in debugging information. *)
@@ -215,7 +215,7 @@ val env_of_only_summary : (summary -> Subst.t -> t) -> t -> t
 
 type error =
   | Illegal_renaming of string * string * string
-  | Inconsistent_import of string * string * string
+  | Inconsistent_import of Consistbl.elt * string * string
   | Need_recursive_types of string * string
   | Missing_module of Location.t * Path.t * Path.t
   | Illegal_value_name of Location.t * string

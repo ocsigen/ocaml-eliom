@@ -15,15 +15,16 @@
 
 (* Consistency tables: for checking consistency of module CRCs *)
 
-type t = (string, Digest.t * string) Hashtbl.t
+type elt = string
+type t = (elt, Digest.t * string) Hashtbl.t
 
 let create () = Hashtbl.create 13
 
 let clear = Hashtbl.clear
 
-exception Inconsistency of string * string * string
+exception Inconsistency of elt * string * string
 
-exception Not_available of string
+exception Not_available of elt
 
 let check tbl name crc source =
   try

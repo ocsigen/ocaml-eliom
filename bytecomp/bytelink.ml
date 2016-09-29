@@ -160,7 +160,7 @@ let scan_file obj_name tolink =
 (* Consistency check between interfaces *)
 
 let crc_interfaces = Consistbl.create ()
-let interfaces = ref ([] : string list)
+let interfaces = ref ([] : Consistbl.elt list)
 let implementations_defined = ref ([] : (string * string) list)
 
 let check_consistency ppf file_name cu =

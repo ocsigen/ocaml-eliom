@@ -21,7 +21,7 @@ val reset : unit -> unit
 val check_consistency:
   Format.formatter -> string -> Cmo_format.compilation_unit -> unit
 
-val extract_crc_interfaces: unit -> (string * Digest.t option) list
+val extract_crc_interfaces: unit -> (Consistbl.elt * Digest.t option) list
 
 type error =
     File_not_found of string
