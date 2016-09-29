@@ -78,10 +78,18 @@ let print_cma_infos (lib : Cmo_format.library) =
   printf "\n";
   List.iter print_cmo_infos lib.lib_units
 
-let print_cmi_infos name crcs =
-  printf "Unit name: %s\n" name;
+let print_cmi_infos (cmi: Cmi_format.cmi_infos) =
+  let open Cmi_format in
+  let print_flag = function
+    | Rectypes -> printf "Rectypes\n"
+    | Deprecated s -> printf "Deprecated: %s\n" s
+    | Opaque -> printf "Opaque"
+    | Side s -> printf "Side: %s\n" (Eliom_base.to_string s)
+  in
+  printf "Unit name: %s\n" cmi.cmi_name;
+  List.iter print_flag cmi.cmi_flags ;
   printf "Interfaces imported:\n";
-  List.iter print_name_crc crcs
+  List.iter print_name_crc cmi.cmi_crcs
 
 let print_cmt_infos cmt =
   let open Cmt_format in
@@ -246,7 +254,7 @@ let dump_obj filename =
     begin match cmi with
      | None -> ()
      | Some cmi ->
-         print_cmi_infos cmi.Cmi_format.cmi_name cmi.Cmi_format.cmi_crcs
+         print_cmi_infos cmi
     end;
     begin match cmt with
      | None -> ()
