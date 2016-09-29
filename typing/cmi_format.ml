@@ -75,11 +75,8 @@ let read_cmi filename =
       | [] -> [], `Noside
     in
     let cmi, side =
-      if buffer = Eliom_types.cmi_magic_number then
-        let cmi_flags, side = get_side cmi.cmi_flags in
-        {cmi with cmi_flags}, side
-      else
-        cmi, Eliom_base.get_side ()
+      let cmi_flags, side = get_side cmi.cmi_flags in
+      {cmi with cmi_flags}, side
     in
     (* We don't change sides inside the module if
        - The module already has sides (ie. is an eliom cmi)
@@ -88,7 +85,7 @@ let read_cmi filename =
     if buffer = Eliom_types.cmi_magic_number
     || Eliom_base.get_side () = `Noside
     then ()
-    else Eliom_types.translate cmi.cmi_sign ;
+    else Eliom_types.translate side cmi.cmi_sign ;
     (* /ELIOM *)
     cmi
     , side (* ELIOM *)
@@ -109,9 +106,10 @@ let output_cmi filename oc cmi =
       Config.cmi_magic_number
   in
   let cmi =
-    match Eliom_base.get_side () with
+    let open Eliom_base in
+    match get_mode_as_side () with
     | `Noside -> cmi
-    | (`Client | `Server | `Shared) as side ->
+    | `Client | `Server | `Shared as side ->
         {cmi with cmi_flags = Side side :: cmi.cmi_flags}
   in
   (* /ELIOM *)

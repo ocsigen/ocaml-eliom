@@ -28,6 +28,12 @@ type shside = [
   | `Noside
 ]
 
+let get_mode_as_side () = match !mode with
+  | Client -> `Client
+  | Server -> `Server
+  | OCaml -> `Noside
+  | Eliom -> `Shared
+
 let to_string = function
   | `Server -> "server"
   | `Client -> "client"

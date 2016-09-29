@@ -24,6 +24,9 @@ type shside = [
   | `Noside
 ]
 
+
+val get_mode_as_side : unit -> [>shside]
+
 val to_string : [<shside] -> string
 val pp : Format.formatter -> [<shside] -> unit
 

@@ -37,10 +37,10 @@ let is_predef i =
     | [] -> false
   in aux i Predef.builtin_idents
 
-let translate tsig =
+let translate side tsig =
   let it_ident i =
     if is_predef i then ()
-    else Ident.change_side (Eliom_base.get_side ()) i
+    else Ident.change_side side i
   in
   let it = make_iterator it_ident in
   it.it_signature it tsig

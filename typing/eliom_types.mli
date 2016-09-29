@@ -2,6 +2,6 @@
 
 val cmi_magic_number : string
 
-val translate : Types.signature -> unit
+val translate : [< Eliom_base.shside] -> Types.signature -> unit
 
 val is_mixed : Types.signature -> bool
