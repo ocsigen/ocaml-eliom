@@ -437,24 +437,13 @@ let check_recmod_typedecls env sdecls decls =
 
 (* Auxiliaries for checking uniqueness of names in signatures and structures *)
 
-(* ELIOM *)
-module SideSet = Set.Make(struct
-    type t = Eliom_base.shside * string
-    let compare (s1,name1) (s2,name2) =
-      match s1, s2 with
-      | _,_ when s1 = s2 -> compare name1 name2
-      | `Noside, _ | _, `Noside
-      | `Shared, _ | _, `Shared -> compare name1 name2
-      | _ -> compare s1 s2
-    let equal = (=)
-  end)
-(* /ELIOM *)
+module SideSet = Eliom_base.SideSet
 
 let check cl loc set_ref name =
   let side = Eliom_base.get_side () in (* ELIOM *)
-  if SideSet.mem (side, name) !set_ref
+  if SideSet.mem (name, side) !set_ref
   then raise(Error(loc, Env.empty, Repeated_name(cl, name)))
-  else set_ref := SideSet.add (side, name) !set_ref
+  else set_ref := SideSet.add (name, side) !set_ref
 
 type names =
   {
@@ -502,7 +491,7 @@ let simplify_signature sg =
     | [] -> [], SideSet.empty
     | (Sig_value(id, descr) as component) :: sg ->
         let (sg, val_names) as k = aux sg in
-        let id_key = (Ident.side id, Ident.name id) in
+        let id_key = (Ident.name id, Ident.side id) in
         if SideSet.mem id_key val_names then k
         else (component :: sg, SideSet.add id_key val_names)
     | component :: sg ->

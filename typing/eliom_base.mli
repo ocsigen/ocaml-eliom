@@ -27,7 +27,23 @@ type shside = [
 
 val get_mode_as_side : unit -> [>shside]
 
+(** String annotated with a side. *)
+module SideString : sig
+  type t = string * shside
+
+  val to_string : t -> string
+  val of_string : string -> t
+
+  val compare : t -> t -> int
+end
+
+(** Allow to replace StringSet when we want side annotations.
+    Use a loose equivalence for side to register conflicts properly.
+*)
+module SideSet : Set.S with type elt = SideString.t
+
 val to_string : [<shside] -> string
+val of_string : string -> [>shside]
 val pp : Format.formatter -> [<shside] -> unit
 
 (** [Check if identifier from side [id] can be used in scope [scope]. *)

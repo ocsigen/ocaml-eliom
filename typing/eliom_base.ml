@@ -39,6 +39,12 @@ let to_string = function
   | `Client -> "client"
   | `Shared -> "shared"
   | `Noside -> "base"
+let of_string = function
+  | "server" -> `Server
+  | "client" -> `Client
+  | "shared" -> `Shared
+  | "base" -> `Noside
+  | _ -> invalid_arg "Eliom_base.of_string"
 let pp ppf x = Format.pp_print_string ppf (to_string x)
 
 (** Check if identifier from side [id] can be used in scope [scope]. *)
@@ -59,6 +65,35 @@ let mirror = function
   | `Server -> `Client
   | `Shared -> `Shared
   | `Noside -> `Noside
+
+
+module SideString = struct
+
+  type t = string * shside
+
+  let sep = '#'
+  let to_string (name,side) =
+    match side with
+    | `Noside -> name
+    | `Server | `Client | `Shared ->
+        Format.asprintf "%s%c%a" name sep pp side
+
+  let of_string s =
+    if String.contains s sep then
+      let name, side = Misc.cut_at s sep in
+      name, (of_string side)
+    else
+      s, `Noside
+
+  let compare (name1,s1) (name2,s2) =
+    match s1, s2 with
+    | _,_ when s1 = s2 -> compare name1 name2
+    | `Noside, _ | _, `Noside
+    | `Shared, _ | _, `Shared -> compare name1 name2
+    | _ -> compare s1 s2
+end
+
+module SideSet = Set.Make(SideString)
 
 (** Handling of current side *)
 
