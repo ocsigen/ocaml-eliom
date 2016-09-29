@@ -171,7 +171,7 @@ val get_unit_name: unit -> string
 
 (* Read, save a signature to/from a file *)
 
-val read_signature: string -> string -> signature
+val read_signature: string -> string -> Ident.t * signature
         (* Arguments: module name, file name. Results: signature. *)
 val save_signature:
   deprecated:string option -> signature -> string -> string -> signature

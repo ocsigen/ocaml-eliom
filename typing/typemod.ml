@@ -1635,7 +1635,7 @@ let type_implementation sourcefile outputprefix modulename initial_env ast =
         with Not_found ->
           raise(Error(Location.in_file sourcefile, Env.empty,
                       Interface_not_compiled sourceintf)) in
-      let dclsig = Env.read_signature modulename intf_file in
+      let _, dclsig = Env.read_signature modulename intf_file in
       let coercion =
         Includemod.compunit initial_env sourcefile sg intf_file dclsig in
       Typecore.force_delayed_checks ();
@@ -1693,10 +1693,11 @@ let type_interface env ast =
 
 let rec package_signatures subst = function
     [] -> []
-  | (name, sg) :: rem ->
+  | (oldid, sg) :: rem ->
       let sg' = Subst.signature subst sg in
-      let oldid = Ident.create_persistent name
-      and newid = Ident.create name in
+      let name = Ident.name oldid in
+      let side = Ident.side oldid in
+      let newid = Ident.create ~side name in
       Sig_module(newid, {md_type=Mty_signature sg';
                          md_attributes=[];
                          md_loc=Location.none;
@@ -1711,12 +1712,12 @@ let package_units initial_env objfiles cmifile modulename =
       (fun f ->
          let pref = chop_extensions f in
          let modname = String.capitalize_ascii(Filename.basename pref) in
-         let sg = Env.read_signature modname (pref ^ ".cmi") in
+         let _, sg = Env.read_signature modname (pref ^ ".cmi") in
          if Filename.check_suffix f ".cmi" &&
             not(Mtype.no_code_needed_sig Env.initial_safe_string sg)
          then raise(Error(Location.none, Env.empty,
                           Implementation_is_required f));
-         (modname, Env.read_signature modname (pref ^ ".cmi")))
+         Env.read_signature modname (pref ^ ".cmi"))
       objfiles in
   (* Compute signature of packaged unit *)
   Ident.reinit();
@@ -1729,7 +1730,7 @@ let package_units initial_env objfiles cmifile modulename =
       raise(Error(Location.in_file mlifile, Env.empty,
                   Interface_not_compiled mlifile))
     end;
-    let dclsig = Env.read_signature modulename cmifile in
+    let _, dclsig = Env.read_signature modulename cmifile in
     Cmt_format.save_cmt  (prefix ^ ".cmt") modulename
       (Cmt_format.Packed (sg, objfiles)) None initial_env  None ;
     Includemod.compunit initial_env "(obtained by packing)" sg mlifile dclsig

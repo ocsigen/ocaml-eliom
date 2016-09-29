@@ -1831,7 +1831,7 @@ let open_signature ?(loc = Location.none) ?(toplevel = false) ovf root sg env =
 let read_signature modname filename =
   let id = Ident.create_persistent modname in
   let ps = read_pers_struct id filename in
-  Lazy.force ps.ps_sig
+  id, Lazy.force ps.ps_sig
 
 (* Return the CRC of the interface of the given compilation unit *)
 
