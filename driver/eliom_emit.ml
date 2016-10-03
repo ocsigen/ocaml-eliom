@@ -158,6 +158,15 @@ module Untyp = struct
         | Some x -> (id, f x payload) :: map f t
         | None -> h :: map f t
 
+    let to_string = function
+      | `Client -> "eliom.client"
+      | `Server -> "eliom.server"
+
+    let annotate_str side str =
+      let loc = str.Parsetree.pstr_loc in
+      let txt = to_string side in
+      Str.extension ~loc ({loc;txt}, PStr [str])
+
   end
 
 
@@ -461,8 +470,8 @@ module Client = struct
         Location.raise_errorf ~loc "Eliom ICE: Unspecified section."
 
     (* If a structure is only a type declaration, we can copy it directly. *)
-    | `Type, Some (`Server | `Client) -> [
-        Untyp.identity_stri orig_stri ;
+    | `Type, Some (`Server | `Client as side) -> [
+        Attr.annotate_str side @@ Untyp.identity_stri stri ;
       ]
     | `Section , Some `Server ->
         client_closures ~loc stri @ [ server_section ~loc ]
@@ -587,8 +596,8 @@ module Server = struct
         Location.raise_errorf ~loc "Eliom ICE: Unspecified section."
 
     (* If a structure is only a type declaration, we can copy it directly. *)
-    | `Type, Some (`Server | `Client) -> [
-        Untyp.identity_stri orig_stri ;
+    | `Type, Some (`Server | `Client as side) -> [
+        Attr.annotate_str side @@ Untyp.identity_stri stri ;
       ]
     | `Section, Some `Server -> server_section mapper stri
     | `Section, Some `Client -> client_section mapper stri
