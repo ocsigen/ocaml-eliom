@@ -8,6 +8,11 @@ type mode =
   | Client
   | Server
 
+  (* This mode cannot be set by the user, it's only used when compiling
+     splited eliom files.
+     It has slightly bigger permissions (in particular, sections are allowed). *)
+  | Splitted of [`Client|`Server]
+
 let mode = ref OCaml
 let set_mode x = mode := x
 let mode_of_string = function
@@ -33,6 +38,7 @@ let get_mode_as_side () = match !mode with
   | Server -> `Server
   | OCaml -> `Noside
   | Eliom -> `Shared
+  | Splitted x -> (x :> shside)
 
 let to_string = function
   | `Server -> "server"
@@ -191,8 +197,8 @@ let server_find modname ext =
 let find_in_load_path modname ~ext =
   match !mode with
   | OCaml -> Misc.find_in_path_uncap !Config.load_path (modname^ext), `Noside
-  | Server -> server_find modname ext, `Noside
-  | Client -> client_find modname ext, `Noside
+  | Splitted `Server | Server -> server_find modname ext, `Noside
+  | Splitted `Client | Client -> client_find modname ext, `Noside
   | Eliom -> eliom_find modname ext
 
 (** Utils *)
@@ -211,7 +217,7 @@ let error ~loc fmt =
 
 let is_authorized loc =
   match !mode with
-  | Eliom -> ()
+  | Eliom | Splitted _ -> ()
   | OCaml | Client | Server ->
       error ~loc
         "Side annotations are not authorized out of eliom files."

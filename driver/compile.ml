@@ -61,7 +61,7 @@ let implementation ppf sourcefile outputprefix =
 let eliom_implementation ppf sourcefile outputprefix =
   let info = init ppf ~init_path:false ~tool_name ~sourcefile ~outputprefix in
   let comp_side s side ast =
-    Eliom_base.set_mode side ;
+    Eliom_base.set_mode (Eliom_base.Splitted side) ;
     Envaux.reset_cache () ;
     Env.reset_required_globals () ;
     let info = eliom_init s
@@ -76,8 +76,8 @@ let eliom_implementation ppf sourcefile outputprefix =
   try
     let {Eliom_emit. client ; server } = eliom_pretype info in
     if not !Clflags.print_types then begin
-      comp_side "server" Eliom_base.Server server ;
-      comp_side "client" Eliom_base.Client client ;
+      comp_side "server" `Server server ;
+      comp_side "client" `Client client ;
     end else begin
       Warnings.check_fatal ();
       Stypes.dump (Some (info.outputprefix ^ ".annot"));

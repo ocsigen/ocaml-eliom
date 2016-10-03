@@ -7,6 +7,7 @@ type mode =
   | Eliom
   | Client
   | Server
+  | Splitted of [`Client | `Server]
 
 val set_mode : mode -> unit
 val mode_of_string : string -> mode
@@ -25,7 +26,7 @@ type shside = [
 ]
 
 
-val get_mode_as_side : unit -> [>shside]
+val get_mode_as_side : unit -> shside
 
 (** String annotated with a side. *)
 module SideString : sig
