@@ -439,8 +439,7 @@ let check_recmod_typedecls env sdecls decls =
 
 module SideSet = Eliom_base.SideSet
 
-let check cl loc set_ref name =
-  let side = Eliom_base.get_side () in (* ELIOM *)
+let check cl loc set_ref name side(* ELIOM *) =
   if SideSet.mem (name, side) !set_ref
   then raise(Error(loc, Env.empty, Repeated_name(cl, name)))
   else set_ref := SideSet.add (name, side) !set_ref
@@ -462,7 +461,7 @@ let new_names () =
   }
 
 
-let check_name check names name = check names name.loc name.txt
+let check_name check names name = check names name.loc name.txt (Eliom_base.get_side ())
 let check_type names loc s = check "type" loc names.types s
 let check_module names loc s = check "module" loc names.modules s
 let check_modtype names loc s = check "module type" loc names.modtypes s
@@ -470,10 +469,10 @@ let check_typext names loc s = check "extension constructor" loc names.typexts s
 
 
 let check_sig_item names loc = function
-  | Sig_type(id, _, _) -> check_type names loc (Ident.name id)
-  | Sig_module(id, _, _) -> check_module names loc (Ident.name id)
-  | Sig_modtype(id, _) -> check_modtype names loc (Ident.name id)
-  | Sig_typext(id, _, _) -> check_typext names loc (Ident.name id)
+  | Sig_type(id, _, _) -> check_type names loc (Ident.name id) (Ident.side id)
+  | Sig_module(id, _, _) -> check_module names loc (Ident.name id) (Ident.side id)
+  | Sig_modtype(id, _) -> check_modtype names loc (Ident.name id) (Ident.side id)
+  | Sig_typext(id, _, _) -> check_typext names loc (Ident.name id) (Ident.side id)
   | _ -> ()
 
 (* Simplify multiple specifications of a value or an extension in a signature.
