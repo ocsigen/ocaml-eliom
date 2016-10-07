@@ -77,7 +77,9 @@ let create_persistent ?(side=Eliom_base.get_side ()) s =
 
 let rename i =
   incr currentstamp;
-  { i with stamp = !currentstamp }
+  let id = { i with stamp = !currentstamp } in
+  change_side (Eliom_base.get_side ()) id;
+  id
 
 let name i = i.name
 
