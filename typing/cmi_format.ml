@@ -105,19 +105,20 @@ let output_cmi filename oc cmi =
     else
       Config.cmi_magic_number
   in
+  let side = Eliom_base.get_mode_as_side () in
   let cmi =
-    let open Eliom_base in
-    match get_mode_as_side () with
+    match side with
     | `Noside -> cmi
     | `Client | `Server | `Shared as side ->
         {cmi with cmi_flags = Side side :: cmi.cmi_flags}
   in
+  let name = Eliom_base.SideString.to_string (cmi.cmi_name, side) in
   (* /ELIOM *)
   output_string oc cmi_magic_number;
   output_value oc (cmi.cmi_name, cmi.cmi_sign);
   flush oc;
   let crc = Digest.file filename in
-  let crcs = (cmi.cmi_name, Some crc) :: cmi.cmi_crcs in
+  let crcs = (name, Some crc) :: cmi.cmi_crcs in
   output_value oc crcs;
   output_value oc cmi.cmi_flags;
   crc

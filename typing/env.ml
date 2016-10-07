@@ -393,11 +393,11 @@ let check_consistency ps =
 
 (* Reading persistent structures from .cmi files *)
 
-let save_pers_struct crc ps =
+let save_pers_struct ~side crc ps =
   let modname = ps.ps_name in
-  let id = Ident.create_persistent modname in (* ELIOM *)
+  let id = Ident.create_persistent ~side modname in (* ELIOM *)
   Hashtbl.add persistent_structures id (Some ps);
-  let elt = (modname, Ident.side id) in (* ELIOM *)
+  let elt = (modname, side) in (* ELIOM *)
   List.iter
     (function
         | Rectypes -> ()
@@ -1910,7 +1910,7 @@ let save_signature_with_imports ~deprecated sg modname filename imports =
         ps_filename = filename;
         ps_flags = cmi.cmi_flags;
       } in
-    save_pers_struct crc ps;
+    save_pers_struct ~side crc ps;
     sg
   with exn ->
     close_out oc;
