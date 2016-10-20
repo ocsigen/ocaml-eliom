@@ -44,7 +44,16 @@ let add_unique id =
   with Not_found ->
     unique_names := Ident.add id (Ident.unique_toplevel_name id) !unique_names
 
-let ident ppf id = pp_print_string ppf (ident_name id)
+(* ELIOM *)
+let string_of_side = function
+  | `Noside -> ""
+  | `Client -> "ᶜ"
+  | `Server -> "ˢ"
+  | `Shared -> "ˢʰ"
+let ident_side id = string_of_side (Ident.side id)
+(* /ELIOM *)
+
+let ident ppf id = pp_print_string ppf (ident_name id^ident_side id)
 
 (* Print a path *)
 
@@ -52,7 +61,7 @@ let ident_pervasive = Ident.create_persistent "Pervasives"
 
 let rec tree_of_path = function
   | Pident id ->
-      Oide_ident (ident_name id)
+      Oide_ident (ident_name id^ident_side id)
   | Pdot(Pident id, s, pos) when Ident.same id ident_pervasive ->
       Oide_ident s
   | Pdot(p, s, pos) ->
