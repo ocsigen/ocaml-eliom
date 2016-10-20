@@ -14,7 +14,6 @@ type mode =
   | Splitted of [`Client|`Server]
 
 let mode = ref OCaml
-let set_mode x = mode := x
 let mode_of_string = function
   | "client" -> Client
   | "server" -> Server
@@ -32,6 +31,8 @@ type shside = [
   | side
   | `Noside
 ]
+let side : shside ref = ref `Noside
+
 
 let get_mode_as_side () = match !mode with
   | Client -> `Client
@@ -39,6 +40,10 @@ let get_mode_as_side () = match !mode with
   | OCaml -> `Noside
   | Eliom -> `Shared
   | Splitted x -> (x :> shside)
+
+let set_mode x =
+  mode := x ;
+  side := (get_mode_as_side())
 
 let to_string = function
   | `Server -> "server"
@@ -103,7 +108,6 @@ module SideSet = Set.Make(SideString)
 
 (** Handling of current side *)
 
-let side : shside ref = ref `Noside
 let get_side () = (!side : shside :> [>shside])
 
 (** In order to report exceptions with the proper scope, we wrap exceptions
