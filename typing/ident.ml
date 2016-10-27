@@ -47,9 +47,7 @@ let show_side i = let open Eliom_base in match side i with
 
 let change_side s i =
   i.flags <-
-    i.flags
-    (* Take care of removing the symmetric, if necessary. *)
-    land (lnot @@ side_to_flag @@ Eliom_base.mirror s)
+    (i.flags land (lnot @@ (client_flag lor server_flag)))
     lor (side_to_flag s)
 
 (* /ELIOM *)
