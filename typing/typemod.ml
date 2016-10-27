@@ -440,9 +440,10 @@ let check_recmod_typedecls env sdecls decls =
 module SideSet = Eliom_base.SideSet
 
 let check cl loc set_ref name side(* ELIOM *) =
-  if SideSet.mem (name, side) !set_ref
+  let elt = Eliom_base.SideString.make name side in
+  if SideSet.mem elt !set_ref
   then raise(Error(loc, Env.empty, Repeated_name(cl, name)))
-  else set_ref := SideSet.add (name, side) !set_ref
+  else set_ref := SideSet.add elt !set_ref
 
 type names =
   {
@@ -490,7 +491,9 @@ let simplify_signature sg =
     | [] -> [], SideSet.empty
     | (Sig_value(id, descr) as component) :: sg ->
         let (sg, val_names) as k = aux sg in
-        let id_key = (Ident.name id, Ident.side id) in
+        let id_key =
+          Eliom_base.SideString.make (Ident.name id) (Ident.side id)
+        in
         if SideSet.mem id_key val_names then k
         else (component :: sg, SideSet.add id_key val_names)
     | component :: sg ->
@@ -587,7 +590,7 @@ and transl_signature env sg =
             let side, sign = Eliom_base.Section.get_sig item in
             let attr = Eliom_base.Section.attr side loc in
             let tsigi, sigi, newenv =
-              Eliom_base.in_side side @@ fun () ->
+              Eliom_base.in_loc side @@ fun () ->
               transl_sig env sign
             in
             let trem, rem, finalenv = transl_sig newenv srem in
@@ -1235,7 +1238,7 @@ and type_structure ?(toplevel = false) funct_body anchor env sstr scope =
     | _ when Eliom_base.Section.check stri ->
         let side, stri = Eliom_base.Section.get stri in
         let attr = Eliom_base.Section.attr side loc in
-        Eliom_base.in_side side @@ fun () ->
+        Eliom_base.in_loc side @@ fun () ->
         let tmod, tsig, env = type_str_item env srem stri in
         let open Eliom_typing.Tast in
         add_stri_attr attr tmod, List.map (add_sigi_attr attr) tsig, env
@@ -1736,7 +1739,8 @@ let package_units initial_env objfiles cmifile modulename =
   end else begin
     (* Determine imports *)
     let unit_names =
-      List.map (fun (id,_) -> (Ident.name id, Ident.side id)) units in
+      List.map (fun (id,_) ->
+        Eliom_base.SideString.make (Ident.name id) (Ident.side id)) units in
     let imports =
       List.filter
         (fun (name, crc) -> not (List.mem name unit_names))

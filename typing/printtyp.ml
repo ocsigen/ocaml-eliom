@@ -45,11 +45,10 @@ let add_unique id =
     unique_names := Ident.add id (Ident.unique_toplevel_name id) !unique_names
 
 (* ELIOM *)
-let string_of_side = function
-  | `Noside -> ""
-  | `Client -> "ᶜ"
-  | `Server -> "ˢ"
-  | `Shared -> "ˢʰ"
+let string_of_side = let open Eliom_base in function
+  | Poly -> ""
+  | Loc Client -> "@c"
+  | Loc Server -> "@s"
 let ident_side id = string_of_side (Ident.side id)
 (* /ELIOM *)
 
@@ -1246,8 +1245,8 @@ and trees_of_sigitem sigi =
       -> Ident.side id
   in
   let f l = match side with
-    | `Noside -> l
-    | #Eliom_base.side as side -> List.map (fun x -> Osig_side (side, x)) l
+    | Eliom_base.Poly -> l
+    | Eliom_base.Loc loc -> List.map (fun x -> Osig_side (loc, x)) l
   in
   f @@ real_trees_of_sigitem sigi
 

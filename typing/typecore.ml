@@ -139,10 +139,10 @@ let iter_expression f e =
     match e.pexp_desc with
     (* ELIOM *)
     | _ when Eliom_base.Fragment.check e ->
-        Eliom_base.in_side `Client @@ fun () ->
+        Eliom_base.(in_loc Client) @@ fun () ->
         f @@ Eliom_base.Fragment.get e
     | _ when Eliom_base.Injection.check e ->
-        Eliom_base.in_side `Server @@ fun () ->
+        Eliom_base.(in_loc Server) @@ fun () ->
         f @@ Eliom_base.Injection.get e
     (* /ELIOM *)
     | Pexp_extension _ (* we don't iterate under extension point *)
@@ -204,8 +204,8 @@ let iter_expression f e =
     match str.pstr_desc with
     (* ELIOM *)
     | _ when Eliom_base.Section.check str ->
-        let side, str = Eliom_base.Section.get str in
-        Eliom_base.in_side side @@ fun () -> structure_item str
+        let loc, str = Eliom_base.Section.get str in
+        Eliom_base.in_loc loc @@ fun () -> structure_item str
     (* /ELIOM *)
     | Pstr_eval (e, _) -> expr e
     | Pstr_value (_, pel) -> List.iter binding pel
@@ -1923,7 +1923,7 @@ and type_injection env e ty_expected =
   let loc = e.pexp_loc in
   let typ_exp =
     begin_def () ;
-    Eliom_base.in_side `Server @@ fun () ->
+    Eliom_base.(in_loc Server) @@ fun () ->
     let t = type_exp env e in
     end_def () ;
     t
@@ -1945,7 +1945,7 @@ and type_injection env e ty_expected =
   | _ ->
       generalize ty_injected ;
       if closed_schema env ty_injected then
-        match Eliom_typing.translate env `Client ty_injected with
+        match Eliom_typing.translate Eliom_base.Client env ty_injected with
         | Ok found_ty ->
             (* Format.printf "Translation found: %a@." *)
             (*   Printtyp.raw_type_expr found_ty ; *)
@@ -1991,15 +1991,15 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
   | _ when Eliom_base.Fragment.check sexp ->
       (* Check that we are indeed on the server. *)
       Eliom_base.check ~loc (fun e -> Error_forward e)
-        `Server "Fragments" ;
+        Eliom_base.(Loc Server) "Fragments" ;
       (* Follow Pexp_lazy *)
       let e = Eliom_base.Fragment.get sexp in
-      let ty = Eliom_base.in_side `Client @@ fun () -> newgenvar () in
+      let ty = Eliom_base.(in_loc Client) @@ fun () -> newgenvar () in
       let to_unify = Eliom_typing.fragment ~loc ~env ty in
-      Eliom_base.in_side `Client @@ fun () ->
+      Eliom_base.(in_loc Client) @@ fun () ->
       unify_exp_types loc env to_unify ty_expected;
       let new_exp =
-        Eliom_base.in_side `Client @@ fun () ->
+        Eliom_base.(in_loc Client) @@ fun () ->
         type_expect env e ty
       in
       re {
@@ -2014,7 +2014,7 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
   | _ when Eliom_base.Injection.check sexp ->
       (* Check that we are indeed on the client. *)
       Eliom_base.check ~loc (fun e -> Error_forward e)
-        `Client "Injections" ;
+        Eliom_base.(Loc Client) "Injections" ;
       let e = Eliom_base.Injection.get sexp in
       let new_exp = type_injection env e ty_expected in
       re {

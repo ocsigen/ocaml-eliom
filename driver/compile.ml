@@ -76,8 +76,8 @@ let eliom_implementation ppf sourcefile outputprefix =
   try
     let {Eliom_emit. client ; server } = eliom_pretype info in
     if not !Clflags.print_types then begin
-      comp_side "server" `Server server ;
-      comp_side "client" `Client client ;
+      comp_side "server" Eliom_base.Server server ;
+      comp_side "client" Eliom_base.Client client ;
     end else begin
       Warnings.check_fatal ();
       Stypes.dump (Some (info.outputprefix ^ ".annot"));

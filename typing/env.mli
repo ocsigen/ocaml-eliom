@@ -215,7 +215,7 @@ val env_of_only_summary : (summary -> Subst.t -> t) -> t -> t
 
 type error =
   | Illegal_renaming of string * string * string
-  | Inconsistent_import of Consistbl.elt * string * string
+  | Inconsistent_import of string * Eliom_base.side * string * string
   | Need_recursive_types of string * string
   | Missing_module of Location.t * Path.t * Path.t
   | Illegal_value_name of Location.t * string

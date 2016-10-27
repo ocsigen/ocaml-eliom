@@ -1,132 +1,146 @@
 [@@@ocaml.warning "+a-4-9-40-42"]
 open Parsetree
 
+type loc =
+  | Client
+  | Server
 
 type mode =
   | OCaml
   | Eliom
-  | Client
-  | Server
+  | OneSide of loc
 
   (* This mode cannot be set by the user, it's only used when compiling
      splited eliom files.
-     It has slightly bigger permissions (in particular, sections are allowed). *)
-  | Splitted of [`Client|`Server]
+     It has slightly bigger permissions (in particular, sections are allowed).
+  *)
+  | Splitted of loc
 
 let mode = ref OCaml
 let mode_of_string = function
-  | "client" -> Client
-  | "server" -> Server
+  | "client" -> OneSide Client
+  | "server" -> OneSide Server
   | "ocaml" -> OCaml
   | "eliom" -> Eliom
   | s -> raise (Arg.Bad ("Invalid argument for -side: "^s))
 
-type side = [
-  | `Client
-  | `Server
-  | `Shared
-]
+type side =
+  | Loc of loc
+  | Poly
 
-type shside = [
-  | side
-  | `Noside
-]
-let side : shside ref = ref `Noside
+let side = ref Poly
 
 
 let get_mode_as_side () = match !mode with
-  | Client -> `Client
-  | Server -> `Server
-  | OCaml -> `Noside
-  | Eliom -> `Shared
-  | Splitted x -> (x :> shside)
+  | OCaml -> Poly
+  | Eliom -> Poly
+  | OneSide x
+  | Splitted x -> Loc x
 
 let set_mode x =
   mode := x ;
   side := (get_mode_as_side())
 
 let to_string = function
-  | `Server -> "server"
-  | `Client -> "client"
-  | `Shared -> "shared"
-  | `Noside -> "base"
+  | Loc Server -> "server"
+  | Loc Client -> "client"
+  | Poly -> "poly"
+
 let of_string = function
-  | "server" -> `Server
-  | "client" -> `Client
-  | "shared" -> `Shared
-  | "base" -> `Noside
-  | _ -> invalid_arg "Eliom_base.of_string"
+  | "server" -> Loc Server
+  | "client" -> Loc Client
+  | "poly" -> Poly
+  | s -> invalid_arg ("Eliom_base.of_string: got "^s)
+
 let pp ppf x = Format.pp_print_string ppf (to_string x)
 
 (** Check if identifier from side [id] can be used in scope [scope]. *)
-let conform ~(scope:shside) ~(id:shside) = match scope, id with
-  | `Server, `Server
-  | `Client, `Client
-  | (`Server | `Client | `Shared), `Shared
-  | _, `Noside
+let conform ~scope ~id = match scope, id with
+  | Loc Server, Loc Server
+  | Loc Client, Loc Client
+  | _, Poly
     -> true
-  | `Client, `Server
-  | `Server, `Client
-  | `Shared, (`Server | `Client)
-  | `Noside, _
+  | Loc Client, Loc Server
+  | Loc Server, Loc Client
+  | Poly, Loc (Server | Client)
     -> false
 
-let mirror = function
-  | `Client -> `Server
-  | `Server -> `Client
-  | `Shared -> `Shared
-  | `Noside -> `Noside
+let mirror_loc = function
+  | Client -> Server
+  | Server -> Client
 
+let mirror = function
+  | Poly -> Poly
+  | Loc l -> Loc (mirror_loc l)
 
 module SideString = struct
 
-  type t = string * shside
+  type t = Consistbl.elt
 
-  let sep = '#'
+  let consistbl_of_side : side -> Consistbl.side = function
+    | Loc Client -> Client
+    | Loc Server -> Server
+    | Poly -> Poly
+
+  let side_of_consistbl : Consistbl.side -> side = function
+    | Client -> Loc Client
+    | Server -> Loc Server
+    | Poly -> Poly
+
+  let sep = '@'
   let to_string (name,side) =
     match side with
-    | `Noside -> name
-    | `Server | `Client | `Shared ->
-        Format.asprintf "%s%c%a" name sep pp side
+    | Consistbl.Poly -> name
+    | _ as side ->
+        Format.asprintf "%s%c%a" name sep pp (side_of_consistbl side)
 
   let of_string s =
     if String.contains s sep then
       let name, side = Misc.cut_at s sep in
-      name, (of_string side)
+      name, (consistbl_of_side @@ of_string side)
     else
-      s, `Noside
+      s, Consistbl.Poly
 
   let compare (name1,s1) (name2,s2) =
     match s1, s2 with
-    | _,_ when s1 = s2 -> compare name1 name2
-    | `Noside, _ | _, `Noside
-    | `Shared, _ | _, `Shared -> compare name1 name2
+    | _, _ when s1 = s2 -> compare name1 name2
+    | Consistbl.Poly, _ | _, Consistbl.Poly -> compare name1 name2
     | _ -> compare s1 s2
+
+  let get (s, side) = (s, side_of_consistbl side)
+  let make s side = (s, consistbl_of_side side)
+
 end
 
 module SideSet = Set.Make(SideString)
 
 (** Handling of current side *)
 
-let get_side () = (!side : shside :> [>shside])
+let get_side () = !side
 
 (** In order to report exceptions with the proper scope, we wrap exceptions
     that cross side boundaries with a side annotation.
 
     The handling mechanism in {!Location} unwraps the exception transparently.
 *)
-exception Error of (shside * exn)
+exception Error of (side * exn)
 
 let in_side new_side body =
    let old_side = !side in
-   side := (new_side : [<shside] :> shside ) ;
+   side := new_side ;
    try
     let r = body () in
     side := old_side; r
-   with e ->
-     let e' : exn = Error (!side, e) in
-     side := old_side;
-     raise e'
+   with
+   | Error _ as exn ->
+       side := old_side;
+       raise exn
+   | e ->
+       let e' : exn = Error (!side, e) in
+       side := old_side;
+       raise e'
+
+let in_loc loc body = in_side (Loc loc) body
 
 let () =
   let handler : exn -> _  = function
@@ -174,12 +188,12 @@ let set_load_path ~client ~server =
 let eliom_find filename ext =
   let side = get_side () in
   try
-    Misc.find_in_path_uncap !Config.load_path (filename ^ ext), `Noside
+    Misc.find_in_path_uncap !Config.load_path (filename ^ ext), Poly
   with Not_found as exn ->
     let l, extpos = match side with
-      | `Server -> !server_load_path, ".server"
-      | `Client -> !client_load_path, ".client"
-      | _ -> raise exn
+      | Loc Server -> !server_load_path, ".server"
+      | Loc Client -> !client_load_path, ".client"
+      | Poly -> raise exn
     in
     try
       Misc.find_in_path_uncap l (filename ^ ext), side
@@ -200,9 +214,9 @@ let server_find modname ext =
 
 let find_in_load_path modname ~ext =
   match !mode with
-  | OCaml -> Misc.find_in_path_uncap !Config.load_path (modname^ext), `Noside
-  | Splitted `Server | Server -> server_find modname ext, `Noside
-  | Splitted `Client | Client -> client_find modname ext, `Noside
+  | OCaml -> Misc.find_in_path_uncap !Config.load_path (modname^ext), Poly
+  | Splitted Server | OneSide Server -> server_find modname ext, Poly
+  | Splitted Client | OneSide Client -> client_find modname ext, Poly
   | Eliom -> eliom_find modname ext
 
 (** Utils *)
@@ -222,7 +236,7 @@ let error ~loc fmt =
 let is_authorized loc =
   match !mode with
   | Eliom | Splitted _ -> ()
-  | OCaml | Client | Server ->
+  | OCaml | OneSide _ ->
       error ~loc
         "Side annotations are not authorized out of eliom files."
 
@@ -286,14 +300,12 @@ module Section = struct
 
   let client = "client"
   let server = "server"
-  let shared = "shared"
 
   let check e =
     match e.pstr_desc with
     | Pstr_extension (({Location.txt},payload),_)
       when is_annotation ~txt client ||
-           is_annotation ~txt server ||
-           is_annotation ~txt shared ->
+           is_annotation ~txt server ->
         begin match payload with
         | PStr [_str] ->
             is_authorized e.pstr_loc ; true
@@ -305,11 +317,9 @@ module Section = struct
     is_authorized e.pstr_loc ;
     match e.pstr_desc with
     | Pstr_extension (({Location.txt},PStr [str]),_)
-      when is_annotation ~txt client -> (`Client, str)
+      when is_annotation ~txt client -> (Client, str)
     | Pstr_extension (({Location.txt},PStr [str]),_)
-      when is_annotation ~txt server -> (`Server, str)
-    | Pstr_extension (({Location.txt},PStr [str]),_)
-      when is_annotation ~txt shared -> (`Shared, str)
+      when is_annotation ~txt server -> (Server, str)
     (* TODO : Drop attributes *)
     | _ -> error ~loc:e.pstr_loc "A section was expected"
 
@@ -320,8 +330,7 @@ module Section = struct
     let aux l stri = match stri.pstr_desc with
       | Pstr_extension (({Location.txt} as ext, PStr str), attrs)
         when is_annotation ~txt client ||
-             is_annotation ~txt server ||
-             is_annotation ~txt shared ->
+             is_annotation ~txt server ->
           let loc = stri.pstr_loc in
           let newl = List.map (make ~loc ~attrs ext) str in
           List.rev_append newl l
@@ -337,8 +346,7 @@ module Section = struct
     match e.psig_desc with
     | Psig_extension (({Location.txt},payload),_)
       when is_annotation ~txt client ||
-           is_annotation ~txt server ||
-           is_annotation ~txt shared ->
+           is_annotation ~txt server ->
         begin match payload with
         | PSig _ ->
             is_authorized e.psig_loc ; true
@@ -350,19 +358,16 @@ module Section = struct
     is_authorized e.psig_loc ;
     match e.psig_desc with
     | Psig_extension (({Location.txt},PSig l),_)
-      when is_annotation ~txt client -> (`Client, l)
+      when is_annotation ~txt client -> (Client, l)
     | Psig_extension (({Location.txt},PSig l),_)
-      when is_annotation ~txt server -> (`Server, l)
-    | Psig_extension (({Location.txt},PSig l),_)
-      when is_annotation ~txt shared -> (`Shared, l)
+      when is_annotation ~txt server -> (Server, l)
     (* TODO : Drop attributes *)
     | _ -> error ~loc:e.psig_loc "A section was expected"
 
   let attr side loc =
     let txt = match side with
-      | `Client -> client
-      | `Server -> server
-      | `Shared -> shared
+      | Client -> client
+      | Server -> server
     in attr txt loc
 
 end
@@ -370,7 +375,7 @@ end
 module Sideness = struct
   open Parsetree
 
-  type t = Same | Client
+  type t = Same | ClientTy
 
   let get ptyp : t =
     let has_attr =
@@ -385,12 +390,12 @@ module Sideness = struct
         | _ -> false)
         ptyp.ptyp_attributes
     in
-    if has_attr then Client else Same
+    if has_attr then ClientTy else Same
 
   let gets l = List.map (fun (x,_) -> get x) l
 
   let wrap (side:t) f x = match side with
     | Same -> f x
-    | Client -> in_side `Client (fun () -> f x)
+    | ClientTy -> in_loc Client (fun () -> f x)
 
 end

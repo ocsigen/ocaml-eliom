@@ -16,7 +16,7 @@
 (* Consistency tables: for checking consistency of module CRCs *)
 
 (* ELIOM *)
-type side = [`Noside | `Server | `Client | `Shared]
+type side = Poly | Server | Client
 type elt = string * side
 (* /ELIOM *)
 

@@ -84,7 +84,7 @@ let print_cmi_infos (cmi: Cmi_format.cmi_infos) =
     | Rectypes -> printf "Rectypes\n"
     | Deprecated s -> printf "Deprecated: %s\n" s
     | Opaque -> printf "Opaque"
-    | Side s -> printf "Side: %s\n" (Eliom_base.to_string s)
+    | Eliom_loc l -> printf "Side: %s\n" Eliom_base.(to_string @@ Loc l)
   in
   printf "Unit name: %s\n" cmi.cmi_name;
   List.iter print_flag cmi.cmi_flags ;

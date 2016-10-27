@@ -417,11 +417,10 @@ and print_out_signature ppf =
   | item :: items ->
       fprintf ppf "%a@ %a" !out_sig_item item print_out_signature items
 (* ELIOM *)
-and side_to_string = function
-  | `Client -> "%client"
-  | `Server -> "%server"
-  | `Shared -> "%shared"
-  | `Noside -> ""
+and side_to_string = let open Eliom_base in function
+  | Loc Client -> "%client"
+  | Loc Server -> "%server"
+  | Poly -> ""
 and print_out_sig_item ppf sigi =
   let side = side_to_string (Eliom_base.get_side ()) in
   match sigi with
@@ -477,7 +476,7 @@ and print_out_sig_item ppf sigi =
   | Osig_ellipsis ->
       fprintf ppf "..."
   | Osig_side (side, sigi) ->
-      Eliom_base.in_side side @@ fun () -> print_out_sig_item ppf sigi
+      Eliom_base.in_loc side @@ fun () -> print_out_sig_item ppf sigi
 
 and print_out_type_decl kwd ppf td =
   let print_constraints ppf =

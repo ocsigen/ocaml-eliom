@@ -6,9 +6,8 @@
 [@@@ocaml.warning "+a-4-9-40-42"]
 
 val translate :
-  Env.t ->
-  [< Eliom_base.shside ] ->
-  Types.type_expr -> (Types.type_expr, Path.t) result
+  Eliom_base.loc ->
+  Env.t -> Types.type_expr -> (Types.type_expr, Path.t) result
 
 (** Utilities to improve error messages.
 
@@ -17,7 +16,7 @@ val translate :
 module Error_msg : sig
 
   val filter_add :
-    Eliom_base.shside -> 'a -> Path.t option -> 'a list -> 'a list
+    Eliom_base.side -> 'a -> Path.t option -> 'a list -> 'a list
 
   val injection :
     Format.formatter ->

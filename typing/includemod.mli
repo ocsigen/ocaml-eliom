@@ -49,7 +49,7 @@ type symptom =
   | Invalid_module_alias of Path.t
   (* ELIOM *)
   | Wrong_side of Ident.t * Location.t * string * (Ident.t * Location.t) list
-  | Side_inclusion of Ident.t * Location.t * string * Location.t * Eliom_base.shside
+  | Side_inclusion of Ident.t * Location.t * string * Location.t * Eliom_base.side
   (* /ELIOM *)
 
 type pos =

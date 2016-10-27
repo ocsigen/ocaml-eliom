@@ -1,41 +1,40 @@
 [@@@ocaml.warning "+a-4-9-40-42"]
 
-(** Compilation mode *)
+(** Possible locations *)
+type loc =
+  | Client
+  | Server
 
+(** Compilation mode *)
 type mode =
   | OCaml
   | Eliom
-  | Client
-  | Server
-  | Splitted of [`Client | `Server]
+  | OneSide of loc
+  | Splitted of loc
 
 val set_mode : mode -> unit
 val mode_of_string : string -> mode
 
 (** Side utilities. *)
 
-type side = [
-  | `Client
-  | `Server
-  | `Shared
-]
+(** Some code is either polymorphic on side, or at a specific location. *)
+type side =
+  | Loc of loc
+  | Poly
 
-type shside = [
-  | side
-  | `Noside
-]
-
-
-val get_mode_as_side : unit -> shside
+val get_mode_as_side : unit -> side
 
 (** String annotated with a side. *)
 module SideString : sig
-  type t = string * shside
+  type t = Consistbl.elt
 
   val to_string : t -> string
   val of_string : string -> t
 
   val compare : t -> t -> int
+
+  val make : string -> side -> t
+  val get: t -> string * side
 end
 
 (** Allow to replace StringSet when we want side annotations.
@@ -43,20 +42,21 @@ end
 *)
 module SideSet : Set.S with type elt = SideString.t
 
-val to_string : [<shside] -> string
-val of_string : string -> [>shside]
-val pp : Format.formatter -> [<shside] -> unit
+val to_string : side -> string
+val of_string : string -> side
+val pp : Format.formatter -> side -> unit
 
 (** [Check if identifier from side [id] can be used in scope [scope]. *)
-val conform : scope:shside -> id:shside -> bool
+val conform : scope:side -> id:side -> bool
 
-val mirror : [<shside] -> [>shside]
+val mirror : side -> side
 val check :
   loc:Location.t ->
-  (Location.error -> exn) -> shside -> string -> unit
+  (Location.error -> exn) -> side -> string -> unit
 
-val in_side : [<shside] -> (unit -> 'a) -> 'a
-val get_side : unit -> [>shside]
+val in_side : side -> (unit -> 'a) -> 'a
+val in_loc : loc -> (unit -> 'a) -> 'a
+val get_side : unit -> side
 
 (** Handling of client/server load path. *)
 
@@ -73,7 +73,7 @@ val set_load_path : client:string list -> server:string list -> unit
     - foo.cmo and Foo.cmo in client path (-client-I)
     - Foo.client.cmo and foo.client.cmo in main path (-I)
 *)
-val find_in_load_path : string -> ext:string -> string * shside
+val find_in_load_path : string -> ext:string -> string * side
 
 (** Error *)
 
@@ -97,11 +97,11 @@ end
 
 module Section : sig
   val check : Parsetree.structure_item -> bool
-  val get : Parsetree.structure_item -> (side * Parsetree.structure_item)
+  val get : Parsetree.structure_item -> (loc * Parsetree.structure_item)
   val split : Parsetree.structure -> Parsetree.structure
   val check_sig : Parsetree.signature_item -> bool
-  val get_sig : Parsetree.signature_item -> (side * Parsetree.signature)
-  val attr : [<side] -> Location.t -> Parsetree.attribute
+  val get_sig : Parsetree.signature_item -> (loc * Parsetree.signature)
+  val attr : loc -> Location.t -> Parsetree.attribute
 end
 
 (* Compmisc utils *)
@@ -111,7 +111,7 @@ val server_include_dirs : string list ref
 (** Sideness annotations. *)
 module Sideness : sig
 
-  type t = Same | Client
+  type t = Same | ClientTy
 
   val get : Parsetree.core_type -> t
   val gets : (Parsetree.core_type * _) list -> t list

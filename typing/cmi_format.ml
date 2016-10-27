@@ -18,7 +18,7 @@ type pers_flags =
   | Deprecated of string
   | Opaque
   (* ELIOM *)
-  | Side of Eliom_base.side
+  | Eliom_loc of Eliom_base.loc
 
 type error =
     Not_an_interface of string
@@ -70,9 +70,9 @@ let read_cmi filename =
     close_in ic;
     (* ELIOM *)
     let rec get_side = function
-      | Side s :: t -> t, (s :> Eliom_base.shside)
+      | Eliom_loc l :: t -> t, Eliom_base.Loc l
       | h::t -> let t, s = get_side t in (h::t), s
-      | [] -> [], `Noside
+      | [] -> [], Eliom_base.Poly
     in
     let cmi, side =
       let cmi_flags, side = get_side cmi.cmi_flags in
@@ -80,12 +80,15 @@ let read_cmi filename =
     in
     (* We don't change sides inside the module if
        - The module already has sides (ie. is an eliom cmi)
-       - The current side is Noside
+       - The current side is Poly
     *)
-    if buffer = Eliom_types.cmi_magic_number
-    || Eliom_base.get_side () = `Noside
-    then ()
-    else Eliom_types.translate side cmi.cmi_sign ;
+    begin match side with
+    | Eliom_base.Loc l when
+        buffer <> Eliom_types.cmi_magic_number
+        && Eliom_base.get_side () <> Eliom_base.Poly
+      -> Eliom_types.translate l cmi.cmi_sign
+    | _ -> ()
+    end ;
     (* /ELIOM *)
     cmi
     , side (* ELIOM *)
@@ -107,12 +110,13 @@ let output_cmi filename oc cmi =
   in
   let side = Eliom_base.get_mode_as_side () in
   let cmi =
+    let open Eliom_base in
     match side with
-    | `Noside -> cmi
-    | `Client | `Server | `Shared as side ->
-        {cmi with cmi_flags = Side side :: cmi.cmi_flags}
+    | Poly -> cmi
+    | Loc l  ->
+        {cmi with cmi_flags = Eliom_loc l :: cmi.cmi_flags}
   in
-  let name = Eliom_base.SideString.to_string (cmi.cmi_name, side) in
+  let name = Eliom_base.SideString.(to_string @@ make cmi.cmi_name side) in
   (* /ELIOM *)
   output_string oc cmi_magic_number;
   output_value oc (cmi.cmi_name, cmi.cmi_sign);

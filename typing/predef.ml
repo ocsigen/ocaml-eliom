@@ -22,7 +22,7 @@ open Btype
 let builtin_idents = ref []
 
 let wrap create s =
-  let id = create ?side:(Some `Noside) s in
+  let id = create ?side:(Some Eliom_base.Poly) s in
   builtin_idents := (s, id) :: !builtin_idents;
   id
 

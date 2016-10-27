@@ -63,8 +63,8 @@ module Translate = struct
         }
 
 
-  let go env side expr =
-    Eliom_base.in_side side @@ fun () ->
+  let go loc env expr =
+    Eliom_base.in_loc loc @@ fun () ->
     let f = path (fun id -> Env.lookup_type id env) in
     try Ok (expression f expr)
     with No_translation p -> Error p
@@ -85,7 +85,7 @@ module Error_msg = struct
       -> name::l
     | _ -> l
 
-  exception FoundIn of Eliom_base.shside
+  exception FoundIn of Eliom_base.side
 
   let injection ppf path fold env s =
     let side = Eliom_base.get_side () in
@@ -224,7 +224,7 @@ let maybe_fragment = function
     when Ident.name id = "Eliom_runtime" -> true
   | _ -> false
 let is_fragment ~loc ~env p =
-  Eliom_base.get_side () = `Server &&
+  Eliom_base.get_side () = Eliom_base.(Loc Server) &&
   maybe_fragment p &&
   let fragment_path, _ = try_resolve loc env in
   Path.same p fragment_path

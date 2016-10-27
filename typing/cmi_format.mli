@@ -18,7 +18,7 @@ type pers_flags =
   | Deprecated of string
   | Opaque
   (* ELIOM *)
-  | Side of Eliom_base.side
+  | Eliom_loc of Eliom_base.loc
 
 type cmi_infos = {
     cmi_name : string;
@@ -34,7 +34,7 @@ val output_cmi : string -> out_channel -> cmi_infos -> Digest.t
 val input_cmi : in_channel -> cmi_infos
 
 (* read a cmi from a filename, checking the magic *)
-val read_cmi : string -> cmi_infos * Eliom_base.shside(*ELIOM*)
+val read_cmi : string -> cmi_infos * Eliom_base.side(*ELIOM*)
 
 (* Error report *)
 

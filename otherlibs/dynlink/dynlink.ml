@@ -85,7 +85,7 @@ let check_consistency file_name cu =
          match crco with
            None -> ()
          | Some crc ->
-             let elt = (name, `Noside (*TODO*)) in (*ELIOM*)
+             let elt = (name, Consistbl.Poly (*TODO*)) in (*ELIOM*)
              if name = cu.cu_name then
                Consistbl.set !crc_interfaces elt crc file_name
              else if !allow_extension then
@@ -120,7 +120,7 @@ let prohibit names =
 
 let add_available_units units =
   List.iter
-    (fun (unit, crc) -> Consistbl.set !crc_interfaces (unit,`Noside) crc "")
+    (fun (unit, crc) -> Consistbl.set !crc_interfaces (unit, Consistbl.Poly) crc "")
     units
 
 (* Default interface CRCs: those found in the current executable *)
@@ -132,7 +132,7 @@ let default_available_units () =
     (fun (unit, crco) ->
        match crco with
          None -> ()
-       | Some crc -> Consistbl.set !crc_interfaces (unit,`Noside) crc "")
+       | Some crc -> Consistbl.set !crc_interfaces (unit,Consistbl.Poly) crc "")
     !default_crcs;
   allow_extension := true
 

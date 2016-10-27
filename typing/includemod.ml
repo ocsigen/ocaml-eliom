@@ -42,7 +42,7 @@ type symptom =
   | Invalid_module_alias of Path.t
   (* ELIOM *)
   | Wrong_side of Ident.t * Location.t * string * (Ident.t * Location.t) list
-  | Side_inclusion of Ident.t * Location.t * string * Location.t * Eliom_base.shside
+  | Side_inclusion of Ident.t * Location.t * string * Location.t * Eliom_base.side
   (* /ELIOM *)
 
 type pos =
@@ -167,8 +167,9 @@ let is_runtime_component = function
 
 (* ELIOM *)
 module Tbl = struct
+  open Eliom_base
   module M = Map.Make(struct
-      type t = field_desc * Eliom_base.shside
+      type t = field_desc * side
       let equal = (=)
       let compare = compare
     end)
@@ -178,9 +179,9 @@ module Tbl = struct
     M.add (k, side) v tbl
   let find side k tbl =
     try M.find (k, side) tbl with
-    | Not_found when side = `Client || side = `Server ->
+    | Not_found when side = Loc Client || side = Loc Server ->
         (* A shared declaration can be exposed as client or server. *)
-        M.find (k, `Shared) tbl
+        M.find (k, Poly) tbl
     | exn -> raise exn
   let find_all key tbl =
     M.fold
@@ -525,16 +526,16 @@ module Side = struct
   (** Contrary to Eliom_base.conform, this allows client/server inside shared
       (and disallow the reverse).
   *)
-  let check_inclusion ~scope ~decl = match scope, decl with
-    | `Shared, _
-    | `Server, `Server
-    | `Client, `Client
-    | _, `Noside
+  let check_inclusion ~scope ~decl =
+    let open Eliom_base in
+    match scope, decl with
+    | Poly, _
+    | Loc Server, Loc Server
+    | Loc Client, Loc Client
       -> true
-    | _, `Shared
-    | `Client, `Server
-    | `Server, `Client
-    | `Noside, _
+    | _, Poly
+    | Loc Client, Loc Server
+    | Loc Server, Loc Client
       -> false
 
   let check scope (id, loc, fdesc) =

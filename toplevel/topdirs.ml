@@ -108,7 +108,7 @@ let check_consistency ppf filename cu =
   try
     List.iter
       (fun (name, crco) ->
-       let elt = (name, Eliom_base.get_side ()) in
+       let elt = Eliom_base.(SideString.make name (get_side ())) in
        Env.add_import elt;
        match crco with
          None -> ()

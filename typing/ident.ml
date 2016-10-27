@@ -28,34 +28,28 @@ let side i =
   let s = (i.flags land server_flag) <> 0 in
   let c = (i.flags land client_flag) <> 0 in
   match s, c with
-  | false, false -> `Noside
-  | true , false -> `Server
-  | false, true  -> `Client
-  | true , true  -> `Shared
+  | false, false -> Eliom_base.Poly
+  | true , false -> Eliom_base.(Loc Server)
+  | false, true  -> Eliom_base.(Loc Client)
+  | true , true  ->
+      invalid_arg
+        ("Ident.side: both client and server flags on dentifier "^i.name)
 
-let invert = function
-  | `Client -> `Server
-  | `Server -> `Client
-  | `Shared -> `Noside
-  | `Noside -> `Shared
+let side_to_flag = let open Eliom_base in function
+  | Loc Server -> server_flag
+  | Loc Client -> client_flag
+  | Poly -> 0
 
-let side_to_flag = function
-  | `Server -> server_flag
-  | `Client -> client_flag
-  | `Shared -> server_flag lor client_flag
-  | `Noside -> 0
-
-let show_side i = match side i with
-  | `Client -> "@c"
-  | `Server -> "@s"
-  | `Shared -> "@sh"
-  | `Noside -> ""
+let show_side i = let open Eliom_base in match side i with
+  | Loc Client -> "@c"
+  | Loc Server -> "@s"
+  | Poly -> ""
 
 let change_side s i =
   i.flags <-
     i.flags
     (* Take care of removing the symmetric, if necessary. *)
-    land (lnot @@ side_to_flag @@ invert s)
+    land (lnot @@ side_to_flag @@ Eliom_base.mirror s)
     lor (side_to_flag s)
 
 (* /ELIOM *)
