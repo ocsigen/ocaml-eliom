@@ -123,8 +123,14 @@ let c_file name =
 
 (** Eliom files *)
 
-let eliom_pretype info =
-  Eliom_emit.untype @@ fst @@ typecheck_impl info @@ parse_impl info
+let eliom_wrap ~frontend ~client ~server info =
+  let backend _info (ty,_) =
+    let pty = Eliom_emit.untype ty in
+    server pty.Eliom_emit.server ;
+    client pty.Eliom_emit.client  ;
+  in
+  wrap_compilation ~frontend ~backend info
+
 let eliom_init suffix ppf ~init_path ~tool_name ~sourcefile ~outputprefix =
   let outputprefix = outputprefix ^ "." ^ suffix in
   let sourcefile = sourcefile ^ "." ^ suffix in

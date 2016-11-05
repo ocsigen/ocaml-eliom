@@ -73,18 +73,8 @@ let eliom_implementation ppf sourcefile outputprefix =
     Format.fprintf ppf "%a@." Pprintast.structure ast ;
     backend info @@ silent_typing info ast ;
   in
-  try
-    let {Eliom_emit. client ; server } = eliom_pretype info in
-    if not !Clflags.print_types then begin
-      comp_side "server" Eliom_base.Server server ;
-      comp_side "client" Eliom_base.Client client ;
-    end else begin
-      Warnings.check_fatal ();
-      Stypes.dump (Some (info.outputprefix ^ ".annot"));
-    end
-  with x ->
-    Stypes.dump (Some (info.outputprefix ^ ".annot"));
-    Misc.remove_file (obj info);
-    Misc.remove_file (cmx info);
-    raise x
+  let server = comp_side "server" Eliom_base.Server in
+  let client = comp_side "client" Eliom_base.Client in
+
+  eliom_wrap ~frontend ~server ~client info
 (* /ELIOM *)
