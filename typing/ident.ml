@@ -206,7 +206,7 @@ let rec find_name_side s = function
       raise Not_found
   | Some k ->
       if Eliom_base.conform s (side k.ident)
-      then k.data
+      then k
       else find_name_side s k.previous
 
 let rec find_side name s = function
@@ -216,12 +216,15 @@ let rec find_side name s = function
       let c = compare name k.ident.name in
       if c = 0 then
         if Eliom_base.conform s (side k.ident)
-        then k.data
+        then k
         else find_name_side s k.previous
       else
         find_side name s (if c < 0 then l else r)
 
-let find_name name = find_side name (Eliom_base.get_side ())
+let find_data name = find_side name (Eliom_base.get_side ())
+
+let find_name name tbl = (find_data name tbl).data
+let find_ident name tbl = (find_data name tbl).ident
 
 let rec get_all s = function
   | None -> []

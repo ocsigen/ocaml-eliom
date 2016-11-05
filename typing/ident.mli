@@ -71,8 +71,6 @@ val fold_name: (t -> 'a -> 'b -> 'b) -> 'a tbl -> 'b -> 'b
 val fold_all: (t -> 'a -> 'b -> 'b) -> 'a tbl -> 'b -> 'b
 val iter: (t -> 'a -> unit) -> 'a tbl -> unit
 
-val find_side : string -> Eliom_base.side -> 'a tbl -> 'a
-
 (* Idents for sharing keys *)
 
 val make_key_generator : unit -> (t -> t)
@@ -82,3 +80,4 @@ include Identifiable.S with type t := t
 (* ELIOM *)
 val side : t -> Eliom_base.side
 val change_side : Eliom_base.side -> t -> unit
+val find_ident : string -> _ tbl -> t
