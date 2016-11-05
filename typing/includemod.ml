@@ -529,11 +529,12 @@ module Side = struct
   let check_inclusion ~scope ~decl =
     let open Eliom_base in
     match scope, decl with
-    | Poly, _
+    | Poly, Poly
+    | Poly, Loc _
     | Loc Server, Loc Server
     | Loc Client, Loc Client
       -> true
-    | _, Poly
+    | Loc _, Poly -> assert false (* We should have specialized before *)
     | Loc Client, Loc Server
     | Loc Server, Loc Client
       -> false
@@ -542,23 +543,44 @@ module Side = struct
     if not @@ check_inclusion ~scope ~decl:(Ident.side id) then
       let kind = kind_of_field_desc fdesc in
       raise (Side_error (id, loc, kind))
-    else ()
+    else  ()
+
+  (** Check if we should try to resolve a module type to ensure side scoping *)
+  let must_resolve ~scope path =
+    let open Eliom_base in
+    match scope, path with
+    | Loc _, (Some Poly | None) -> true
+
+    | Loc Client, Some Loc Client
+    | Loc Server, Some Loc Server
+    | Poly, Some Poly
+    | Poly, None
+      -> false (* side will always be correct *)
+
+    | Poly, Some Loc _
+    | Loc _, Some Loc _
+      -> assert false (* Should have been prevented by look up *)
 
   let signature_item scope sigi =
     check scope @@ item_ident_name sigi
   let signature scope s = List.iter (signature_item scope) s
 
-  let rec module_type env side mty =
+  let rec module_type env scope mty =
     match mty with
-    | Mty_signature s -> signature side s
+    | Mty_signature s -> signature scope s
     | Mty_ident p ->
-        module_type env side @@ expand_module_path env [] p
+        if must_resolve ~scope @@ Env.find_module_side p env &&
+           may_expand_module_path env p then
+          module_type env scope @@ expand_module_path env [] p
+        else ()
     | Mty_alias p ->
-        module_type env side @@ expand_module_alias env [] p
-    | Mty_functor (id, None, mty) -> module_type env side mty
+        if must_resolve ~scope @@ Env.find_module_side p env then
+          module_type env scope @@ expand_module_alias env [] p
+        else ()
+    | Mty_functor (id, None, mty) -> module_type env scope mty
     | Mty_functor (id, Some arg, mty) ->
-        module_type env side arg ;
-        module_type env side mty
+        module_type env scope arg ;
+        module_type env scope mty
 
   let module_expr { mod_loc ; mod_type ; mod_env } =
     let side = Eliom_base.get_side () in
