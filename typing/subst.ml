@@ -364,7 +364,7 @@ let rec rename_bound_idents s idents = function
       let id' = Ident.rename id in
       rename_bound_idents s (id' :: idents) sg
 
-let rec modtype s = function
+let rec modtype ?(renew=true) s = function
     Mty_ident p as mty ->
       begin match p with
         Pident id ->
@@ -375,21 +375,24 @@ let rec modtype s = function
           fatal_error "Subst.modtype"
       end
   | Mty_signature sg ->
-      Mty_signature(signature s sg)
+      Mty_signature(signature ~renew s sg)
   | Mty_functor(id, arg, res) ->
-      let id' = Ident.rename id in
-      Mty_functor(id', may_map (modtype s) arg,
-                       modtype (add_module id (Pident id') s) res)
+      let id' = if renew then Ident.rename id else id in
+      Mty_functor(id', may_map (modtype ~renew s) arg,
+                       modtype ~renew (add_module id (Pident id') s) res)
   | Mty_alias p ->
       Mty_alias(module_path s p)
 
-and signature s sg =
-  (* Components of signature may be mutually recursive (e.g. type declarations
-     or class and type declarations), so first build global renaming
-     substitution... *)
-  let (new_idents, s') = rename_bound_idents s [] sg in
-  (* ... then apply it to each signature component in turn *)
-  List.map2 (signature_component s') sg new_idents
+and signature ?(renew=true) s sg =
+  if renew then
+    (* Components of signature may be mutually recursive (e.g. type declarations
+       or class and type declarations), so first build global renaming
+       substitution... *)
+    let (new_idents, s') = rename_bound_idents s [] sg in
+    (* ... then apply it to each signature component in turn *)
+    List.map2 (signature_component s') sg new_idents
+  else
+    List.map (signature_component_no_renew s) sg
 
 and signature_component s comp newid =
   match comp with
@@ -400,24 +403,41 @@ and signature_component s comp newid =
   | Sig_typext(id, ext, es) ->
       Sig_typext(newid, extension_constructor s ext, es)
   | Sig_module(id, d, rs) ->
-      Sig_module(newid, module_declaration s d, rs)
+      Sig_module(newid, module_declaration ~renew:true s d, rs)
   | Sig_modtype(id, d) ->
-      Sig_modtype(newid, modtype_declaration s d)
+      Sig_modtype(newid, modtype_declaration ~renew:true s d)
   | Sig_class(id, d, rs) ->
       Sig_class(newid, class_declaration s d, rs)
   | Sig_class_type(id, d, rs) ->
       Sig_class_type(newid, cltype_declaration s d, rs)
 
-and module_declaration s decl =
+and signature_component_no_renew s comp =
+  match comp with
+    Sig_value(id, d) ->
+      Sig_value(id, value_description s d)
+  | Sig_type(id, d, rs) ->
+      Sig_type(id, type_declaration s d, rs)
+  | Sig_typext(id, ext, es) ->
+      Sig_typext(id, extension_constructor s ext, es)
+  | Sig_module(id, d, rs) ->
+      Sig_module(id, module_declaration ~renew:false s d, rs)
+  | Sig_modtype(id, d) ->
+      Sig_modtype(id, modtype_declaration ~renew:false s d)
+  | Sig_class(id, d, rs) ->
+      Sig_class(id, class_declaration s d, rs)
+  | Sig_class_type(id, d, rs) ->
+      Sig_class_type(id, cltype_declaration s d, rs)
+
+and module_declaration ?(renew=true) s decl =
   {
-    md_type = modtype s decl.md_type;
+    md_type = modtype ~renew s decl.md_type;
     md_attributes = attrs s decl.md_attributes;
     md_loc = loc s decl.md_loc;
   }
 
-and modtype_declaration s decl  =
+and modtype_declaration ?(renew=true) s decl  =
   {
-    mtd_type = may_map (modtype s) decl.mtd_type;
+    mtd_type = may_map (modtype ~renew s) decl.mtd_type;
     mtd_attributes = attrs s decl.mtd_attributes;
     mtd_loc = loc s decl.mtd_loc;
   }
@@ -434,6 +454,6 @@ let merge_tbls f m1 m2 =
 let compose s1 s2 =
   { types = merge_tbls (type_path s2) s1.types s2.types;
     modules = merge_tbls (module_path s2) s1.modules s2.modules;
-    modtypes = merge_tbls (modtype s2) s1.modtypes s2.modtypes;
+    modtypes = merge_tbls (modtype ~renew:true s2) s1.modtypes s2.modtypes;
     for_saving = s1.for_saving || s2.for_saving;
     nongen_level = min s1.nongen_level s2.nongen_level }
