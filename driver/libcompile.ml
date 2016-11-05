@@ -123,11 +123,20 @@ let c_file name =
 
 (** Eliom files *)
 
+
 let eliom_wrap ~frontend ~client ~server info =
+  let print ast info s =
+    let ppf =
+      Format.formatter_of_out_channel @@
+      open_out (info.outputprefix^s^".ml")
+    in
+    Format.fprintf ppf "%a@." Pprintast.structure ast ;
+  in
   let backend _info (ty,_) =
-    let pty = Eliom_emit.untype ty in
-    server pty.Eliom_emit.server ;
-    client pty.Eliom_emit.client  ;
+    let {Eliom_emit. client = c ; server = s } = Eliom_emit.untype ty in
+    print c info ".client" ; print s info ".server" ;
+    server s ;
+    client c ;
   in
   wrap_compilation ~frontend ~backend info
 

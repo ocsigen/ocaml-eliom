@@ -58,6 +58,7 @@ let implementation ppf sourcefile outputprefix =
   wrap_compilation ~frontend ~backend info
 
 (* ELIOM *)
+
 let eliom_implementation ppf sourcefile outputprefix =
   let info = init ppf ~init_path:false ~tool_name ~sourcefile ~outputprefix in
   let comp_side s side ast =
@@ -67,10 +68,6 @@ let eliom_implementation ppf sourcefile outputprefix =
     let info = eliom_init s
         ppf ~init_path:false ~tool_name ~sourcefile ~outputprefix
     in
-    let ppf =
-      Format.formatter_of_out_channel @@ open_out (info.outputprefix^".ml")
-    in
-    Format.fprintf ppf "%a@." Pprintast.structure ast ;
     backend info @@ silent_typing info ast ;
   in
   let server = comp_side "server" Eliom_base.Server in
