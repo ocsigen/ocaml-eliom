@@ -1,20 +1,19 @@
 [@@@ocaml.warning "+a-4-9-40-42"]
-open Eliom_base
 
 val cmi_magic_number : string
 
-val translate : loc -> Types.signature -> unit
+val translate : Eliom_base.loc -> Types.signature -> unit
+val translate_path : Path.t -> unit
 
 val is_mixed : Types.signature -> bool
 
 module Specialize : sig
 
-  val modtype_declaration :
-    scope:side -> id:side ->
-    Types.modtype_declaration -> Types.modtype_declaration
+  type 'a t = Eliom_base.side -> 'a -> 'a
 
-  val module_declaration :
-    scope:side -> id:side ->
-    Types.module_declaration -> Types.module_declaration
+  val modtype_declaration : Types.modtype_declaration t
+  val module_declaration : Types.module_declaration t
+  val class_declaration : Types.class_declaration t
+  val class_type_declaration : Types.class_type_declaration t
 
 end

@@ -163,9 +163,12 @@ module EnvTbl =
   end
 
 (* ELIOM *)
+module ETS = Eliom_types.Specialize
+
 module STbl = struct
   type 'a t = 'a Ident.tbl
   let find = Ident.find_name
+  let find_ident = Ident.find_ident
   let find_same = Ident.find_same
   let iter f = Ident.iter (fun i -> f @@ Ident.name i)
   let fold f =
@@ -591,15 +594,18 @@ let rec find_module_descr path env =
           raise Not_found
       end
 
-let find proj1 proj2 path env =
+let find proj1 proj2 specialize path env =
   match path with
     Pident id ->
       let (p, data) = EnvTbl.find_same id (proj1 env)
-      in data
+      in specialize (Ident.side id) data
   | Pdot(p, s, pos) ->
       begin match get_components (find_module_descr p env) with
         Structure_comps c ->
-          let (data, pos) = STbl.find s (proj2 c) in data
+          let tbl = proj2 c in
+          let id = STbl.find_ident s tbl in
+          let (data, pos) = STbl.find s tbl in
+          specialize (Ident.side id) data
       | Functor_comps f ->
           raise Not_found
       end
@@ -607,15 +613,15 @@ let find proj1 proj2 path env =
       raise Not_found
 
 let find_value =
-  find (fun env -> env.values) (fun sc -> sc.comp_values)
+  find (fun env -> env.values) (fun sc -> sc.comp_values) (fun _ x -> x)
 and find_type_full =
-  find (fun env -> env.types) (fun sc -> sc.comp_types)
+  find (fun env -> env.types) (fun sc -> sc.comp_types) (fun _ x -> x)
 and find_modtype =
-  find (fun env -> env.modtypes) (fun sc -> sc.comp_modtypes)
+  find (fun env -> env.modtypes) (fun sc -> sc.comp_modtypes) ETS.modtype_declaration
 and find_class =
-  find (fun env -> env.classes) (fun sc -> sc.comp_classes)
+  find (fun env -> env.classes) (fun sc -> sc.comp_classes) ETS.class_declaration
 and find_cltype =
-  find (fun env -> env.cltypes) (fun sc -> sc.comp_cltypes)
+  find (fun env -> env.cltypes) (fun sc -> sc.comp_cltypes) ETS.class_type_declaration
 
 let type_of_cstr path = function
   | {cstr_inlined = Some d; _} ->
@@ -670,6 +676,7 @@ let find_type_descrs p env =
 let find_module ~alias path env =
   match path with
     Pident id ->
+      ETS.module_declaration (Ident.side id)
       begin try
         let (p, data) = EnvTbl.find_same id env.modules
         in data
@@ -682,7 +689,9 @@ let find_module ~alias path env =
   | Pdot(p, s, pos) ->
       begin match get_components (find_module_descr p env) with
         Structure_comps c ->
+          let id = STbl.find_ident s c.comp_modules in
           let (data, pos) = STbl.find s c.comp_modules in
+          ETS.module_declaration (Ident.side id) @@
           md (EnvLazy.force subst_modtype_maker data)
       | Functor_comps f ->
           raise Not_found
@@ -691,6 +700,7 @@ let find_module ~alias path env =
       let desc1 = find_module_descr p1 env in
       begin match get_components desc1 with
         Functor_comps f ->
+          ETS.module_declaration Eliom_base.Poly @@
           md begin match f.fcomp_res with
           | Mty_alias p as mty-> mty
           | mty ->
@@ -907,16 +917,21 @@ and lookup_module ~load ?loc lid env : Path.t =
           raise Not_found
       end
 
-let lookup proj1 proj2 ?loc lid env =
+let lookup proj1 proj2 specialize ?loc lid env =
   match lid with
     Lident s ->
-      EnvTbl.find_name s (proj1 env)
+      let tbl = proj1 env in
+      let id = Ident.find_ident s tbl in
+      let (p, data) = EnvTbl.find_name s tbl in
+      (p, specialize (Ident.side id) data)
   | Ldot(l, s) ->
       let (p, desc) = lookup_module_descr ?loc l env in
       begin match get_components desc with
         Structure_comps c ->
-          let (data, pos) = STbl.find s (proj2 c) in
-          (Pdot(p, s, pos), data)
+          let tbl = proj2 c in
+          let (data, pos) = STbl.find s tbl in
+          let id = STbl.find_ident s tbl in
+          (Pdot(p, s, pos), specialize (Ident.side id) data)
       | Functor_comps f ->
           raise Not_found
       end
@@ -960,8 +975,9 @@ let cstr_shadow cstr1 cstr2 =
 
 let lbl_shadow lbl1 lbl2 = false
 
+
 let lookup_value =
-  lookup (fun env -> env.values) (fun sc -> sc.comp_values)
+  lookup (fun env -> env.values) (fun sc -> sc.comp_values) (fun _ x -> x)
 and lookup_all_constructors =
   lookup_all_simple (fun env -> env.constrs) (fun sc -> sc.comp_constrs)
     cstr_shadow
@@ -969,13 +985,13 @@ and lookup_all_labels =
   lookup_all_simple (fun env -> env.labels) (fun sc -> sc.comp_labels)
     lbl_shadow
 and lookup_type =
-  lookup (fun env -> env.types) (fun sc -> sc.comp_types)
+  lookup (fun env -> env.types) (fun sc -> sc.comp_types) (fun _ x -> x)
 and lookup_modtype =
-  lookup (fun env -> env.modtypes) (fun sc -> sc.comp_modtypes)
+  lookup (fun env -> env.modtypes) (fun sc -> sc.comp_modtypes) ETS.modtype_declaration
 and lookup_class =
-  lookup (fun env -> env.classes) (fun sc -> sc.comp_classes)
+  lookup (fun env -> env.classes) (fun sc -> sc.comp_classes) ETS.class_declaration
 and lookup_cltype =
-  lookup (fun env -> env.cltypes) (fun sc -> sc.comp_cltypes)
+  lookup (fun env -> env.cltypes) (fun sc -> sc.comp_cltypes) ETS.class_type_declaration
 
 let update_value s f env =
   try

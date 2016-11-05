@@ -68,9 +68,23 @@ module Translate = struct
     let it = get side in
     it.it_modtype_declaration it
 
+  let class_declaration side =
+    let it = get side in
+    it.it_class_declaration it
+
+  let class_type_declaration side =
+    let it = get side in
+    it.it_class_type_declaration it
+
 end
 
 let translate = Translate.signature
+let translate_path p =
+  match Eliom_base.get_side () with
+  | Poly -> ()
+  | Loc side ->
+      let it = Translate.get side in
+      it.it_path p
 
 let global_side s =
   let open Eliom_base in
@@ -103,31 +117,46 @@ let is_mixed s = global_side s = `Mixed
 *)
 module Specialize = struct
 
+
+  type 'a t = Eliom_base.side -> 'a -> 'a
+
   (** Test if we should specialize and return the
       location to specialize to if appropriate.
   *)
-  let test ~scope ~id =
+  let test ~scope ~idside =
     let open Eliom_base in
-    match id, scope with
+    match idside, scope with
     | Poly, Loc l -> Some l
     | Poly, Poly -> None
     | Loc _, _ -> None
 
-  let specialization_with f ~scope ~id x =
-    match test ~scope ~id with
-    | Some loc -> f loc x
+  let specialization_with copy translate idside x =
+    let scope = Eliom_base.get_side () in
+    match test ~scope ~idside with
+    | Some loc ->
+        let x' = copy x in
+        translate loc x' ;
+        x'
     | None -> x
 
   let module_declaration =
-    specialization_with @@ fun side md ->
-    let md' = Subst.(module_declaration identity) md in
-    Translate.module_declaration side md' ;
-    md'
+    specialization_with
+      Subst.(module_declaration ~renew:false identity)
+      Translate.module_declaration
 
   let modtype_declaration =
-    specialization_with @@ fun side md ->
-    let md' = Subst.(modtype_declaration identity) md in
-    Translate.modtype_declaration side md' ;
-    md'
+    specialization_with
+      Subst.(modtype_declaration ~renew:false identity)
+      Translate.modtype_declaration
+
+  let class_declaration =
+    specialization_with
+      Subst.(class_declaration identity)
+      Translate.class_declaration
+
+  let class_type_declaration =
+    specialization_with
+      Subst.(cltype_declaration identity)
+      Translate.class_type_declaration
 
 end
