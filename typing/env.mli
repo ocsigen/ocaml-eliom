@@ -59,6 +59,10 @@ val find_modtype: Path.t -> t -> modtype_declaration
 val find_class: Path.t -> t -> class_declaration
 val find_cltype: Path.t -> t -> class_type_declaration
 
+(* ELIOM *)
+val find_module_side: Path.t -> t -> Eliom_base.side option
+(* /ELIOM *)
+
 val find_type_expansion:
     Path.t -> t -> type_expr list * type_expr * int option
 val find_type_expansion_opt:
