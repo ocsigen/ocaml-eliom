@@ -147,9 +147,8 @@ module Untyp = struct
       | _ -> None
 
     let section {Location.txt} = match txt with
-      | "eliom.client" -> Some `Client
-      | "eliom.server" -> Some `Server
-      | "eliom.shared" -> Some `Shared
+      | "eliom.client" -> Some Eliom_base.Client
+      | "eliom.server" -> Some Eliom_base.Server
       | _ -> None
 
     let rec map f : attributes -> attributes = function
@@ -159,8 +158,8 @@ module Untyp = struct
         | None -> h :: map f t
 
     let to_string = function
-      | `Client -> "eliom.client"
-      | `Server -> "eliom.server"
+      | Eliom_base.Client -> "eliom.client"
+      | Eliom_base.Server -> "eliom.server"
 
     let annotate_str side str =
       let loc = str.Parsetree.pstr_loc in
@@ -177,10 +176,10 @@ module Untyp = struct
     | h :: t ->
         match Attr.section (fst h) with
         | None -> h :: remove_section_attr r t
-        | Some _ as x -> r := x ; t
+        | Some (_ as x) -> r := Eliom_base.Loc x ; t
 
   let get_section_side str =
-    let r = ref None in
+    let r = ref Eliom_base.Poly in
     let str' = map_mod_attr (remove_section_attr r) str in
     str', !r
 
@@ -463,20 +462,22 @@ module Client = struct
     let str_desc, side = get_section_side orig_stri.str_desc in
     let stri = {orig_stri with str_desc} in
     match declaration_kind str_desc, side with
-    | `Module, _ -> [
+    | `Module, (Loc Client | Poly) -> [
         U.default_mapper.structure_item mapper orig_stri ;
       ]
-    | _, (None | Some `Shared) ->
-        Location.raise_errorf ~loc "Eliom ICE: Unspecified section."
 
     (* If a structure is only a type declaration, we can copy it directly. *)
-    | `Type, Some (`Server | `Client as side) -> [
+    | `Type, Loc side -> [
         Attr.annotate_str side @@ Untyp.identity_stri stri ;
       ]
-    | `Section , Some `Server ->
-        client_closures ~loc stri @ [ server_section ~loc ]
-    | `Section, Some `Client ->
+
+    | `Section, Loc Client ->
         client_section ~loc stri
+
+    | (`Section | `Module), Loc Server ->
+        client_closures ~loc stri @ [ server_section ~loc ]
+
+    | _, Poly -> [identity_stri stri]
 
   let structure mapper {str_items} =
     List.flatten @@ List.map (structure_item mapper) str_items
@@ -585,22 +586,22 @@ module Server = struct
     aux @@ unfold_expression e
 
   let structure_item mapper orig_stri =
-    let loc = orig_stri.str_loc in
     let str_desc, side = get_section_side orig_stri.str_desc in
     let stri = {orig_stri with str_desc} in
     match declaration_kind str_desc, side with
-    | `Module, _ -> [
+    | `Module, (Loc Server | Poly) -> [
         U.default_mapper.structure_item mapper orig_stri ;
       ]
-    | _, (None | Some `Shared) ->
-        Location.raise_errorf ~loc "Eliom ICE: Unspecified section."
+    | `Section, Loc Server -> server_section mapper stri
 
     (* If a structure is only a type declaration, we can copy it directly. *)
-    | `Type, Some (`Server | `Client as side) -> [
+    | `Type, Loc side -> [
         Attr.annotate_str side @@ Untyp.identity_stri stri ;
       ]
-    | `Section, Some `Server -> server_section mapper stri
-    | `Section, Some `Client -> client_section mapper stri
+
+    | (`Section | `Module) , Loc Client -> client_section mapper stri
+
+    | _, Poly -> [identity_stri stri]
 
   let structure mapper {str_items} =
     List.concat @@ List.map (structure_item mapper) str_items
