@@ -357,8 +357,29 @@ type pers_struct =
 
 (* ELIOM *)
 (* Those idents are all persistent, but can contain different sides. *)
-let persistent_structures =
-  (Hashtbl.create 17 : (Ident.t, pers_struct option) Hashtbl.t)
+module PersTbl = struct
+  module M = struct
+    include Eliom_base.SideString
+    let equal (x:t) y = x = y
+    let hash = Hashtbl.hash
+  end
+  include Hashtbl.Make(M)
+  let of_ident i =
+    Eliom_base.SideString.make (Ident.name i) (Ident.side i)
+  let find tbl i =
+    let id, loc = of_ident i in
+    if loc <> Consistbl.Poly && mem tbl (id, loc) then
+      find tbl (id, loc)
+    else
+      find tbl (id, Consistbl.Poly)
+        
+  let add tbl i = add tbl (of_ident i)
+  let mem tbl i = mem tbl (of_ident i)
+end
+
+let persistent_structures
+  : pers_struct option PersTbl.t
+  = PersTbl.create 17
 (* /ELIOM *)
 
 (* Consistency between persistent structures *)
@@ -399,7 +420,7 @@ let check_consistency ps =
 let save_pers_struct ~side crc ps =
   let modname = ps.ps_name in
   let id = Ident.create_persistent ~side modname in (* ELIOM *)
-  Hashtbl.add persistent_structures id (Some ps);
+  PersTbl.add persistent_structures id (Some ps);
   let elt = Eliom_base.SideString.make modname side in (* ELIOM *)
   List.iter
     (function
@@ -421,8 +442,9 @@ let read_pers_struct check id filename =
     Ident.change_side side id ;
     Format.eprintf "Now is %a.@." Ident.print id ;
   end ;
+  let elt = Eliom_base.SideString.make modname side in
   (* /ELIOM *)
-  add_import @@ Eliom_base.SideString.make modname side;
+  add_import elt ;
   let name = cmi.cmi_name in
   let sign = cmi.cmi_sign in
   let crcs = cmi.cmi_crcs in
@@ -461,13 +483,13 @@ let read_pers_struct check id filename =
         | Opaque -> add_imported_opaque modname)
     ps.ps_flags;
   if check then check_consistency ps;
-  Hashtbl.add persistent_structures id (Some ps);
+  PersTbl.add persistent_structures id (Some ps);
   ps
 
 let find_pers_struct check id =
   let name = Ident.name id in
   if name = "*predef*" then raise Not_found;
-  match Hashtbl.find persistent_structures id with
+  match PersTbl.find persistent_structures id with
   | Some ps -> ps
   | None -> raise Not_found
   | exception Not_found ->
@@ -476,7 +498,7 @@ let find_pers_struct check id =
         try
           Eliom_base.find_in_load_path name ~ext:".cmi"
         with Not_found ->
-          Hashtbl.add persistent_structures id None;
+          PersTbl.add persistent_structures id None;
           raise Not_found
       in
 
@@ -522,7 +544,7 @@ let find_pers_struct name =
   find_pers_struct true name
 
 let check_pers_struct name =
-  if not (Hashtbl.mem persistent_structures name) then begin
+  if not (PersTbl.mem persistent_structures name) then begin
     (* PR#6843: record the weak dependency ([add_import]) regardless of
        whether the check suceeds, to help make builds more
        deterministic. *)
@@ -537,7 +559,7 @@ let check_pers_struct name =
 
 let reset_cache () =
   current_unit := "";
-  Hashtbl.clear persistent_structures;
+  PersTbl.clear persistent_structures;
   clear_imports ();
   Hashtbl.clear value_declarations;
   Hashtbl.clear type_declarations;
@@ -547,11 +569,11 @@ let reset_cache () =
 let reset_cache_toplevel () =
   (* Delete 'missing cmi' entries from the cache. *)
   let l =
-    Hashtbl.fold
+    PersTbl.fold
       (fun name r acc -> if r = None then name :: acc else acc)
       persistent_structures []
   in
-  List.iter (Hashtbl.remove persistent_structures) l;
+  List.iter (PersTbl.remove persistent_structures) l;
   Hashtbl.clear value_declarations;
   Hashtbl.clear type_declarations;
   Hashtbl.clear used_constructors;
@@ -1152,7 +1174,7 @@ let rec scrape_alias_for_visit env mty =
   match mty with
   | Mty_alias (Pident id)
     when Ident.persistent id
-      && not (Hashtbl.mem persistent_structures id) -> false
+      && not (PersTbl.mem persistent_structures id) -> false
   | Mty_alias path -> (* PR#6600: find_module may raise Not_found *)
       begin try scrape_alias_for_visit env (find_module path env).md_type
       with Not_found -> false
@@ -1181,11 +1203,12 @@ let iter_env proj1 proj2 f env () =
       | Functor_comps _ -> ()
     in iter_env_cont := (path, cont) :: !iter_env_cont
   in
-  Hashtbl.iter
+  PersTbl.iter
     (fun id pso ->
       match pso with None -> ()
       | Some ps ->
-          let id = Pident id in
+          let id, side = Eliom_base.SideString.get id in
+          let id = Pident (Ident.create_persistent ~side id) in
           iter_components id id ps.ps_comps)
     persistent_structures;
   Ident.iter
@@ -1206,7 +1229,7 @@ let same_types env1 env2 =
 
 let used_persistent () =
   let r = ref Concr.empty in
-  Hashtbl.iter (fun s pso -> if pso != None then r := Concr.add (Ident.name s) !r)
+  PersTbl.iter (fun s pso -> if pso != None then r := Concr.add (fst s) !r)
     persistent_structures;
   !r
 
@@ -1990,12 +2013,13 @@ let fold_modules f lid env acc =
           env.modules
           acc
       in
-      Hashtbl.fold
+      PersTbl.fold
         (fun id ps acc ->
           match ps with
               None -> acc
             | Some ps ->
-              f (Ident.name id) (Pident id)
+              let id, side = Eliom_base.SideString.get id in
+              f id (Pident (Ident.create_persistent ~side id))
                      (md (Mty_signature (Lazy.force ps.ps_sig))) acc)
         persistent_structures
         acc
