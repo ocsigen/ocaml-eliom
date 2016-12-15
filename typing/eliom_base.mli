@@ -115,6 +115,7 @@ module Sideness : sig
 
   val get : Parsetree.core_type -> t
   val gets : (Parsetree.core_type * _) list -> t list
-  val wrap : t -> ('a -> 'b) -> 'a -> 'b
+  val wrap : t -> (unit -> 'b) -> 'b
 
+  val pp : Format.formatter -> t -> unit
 end

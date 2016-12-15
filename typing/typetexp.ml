@@ -357,7 +357,11 @@ let rec transl_type env policy styp =
       let args =
         List.map2
           (fun x side ->
-             Eliom_base.Sideness.wrap side (transl_type env policy) x, side)
+             let x =
+               Eliom_base.Sideness.wrap side
+                 (fun () -> transl_type env policy x)
+             in
+             x , side)
           stl decl.type_sideness
       in
       (*/ELIOM*)
@@ -371,8 +375,8 @@ let rec transl_type env policy styp =
       List.iter2
         (fun (sty, (cty, side(*ELIOM*)) ) ty' ->
             try
-              Eliom_base.Sideness.wrap side (*ELIOM*)
-              (unify_param env ty') cty.ctyp_type with Unify trace ->
+              Eliom_base.Sideness.wrap side @@ fun () -> (*ELIOM*)
+              unify_param env ty' cty.ctyp_type with Unify trace ->
              raise (Error(sty.ptyp_loc, env, Type_mismatch (swap_list trace))))
         (List.combine stl args) params;
       let args = List.map fst args in (*ELIOM*)

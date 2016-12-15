@@ -205,7 +205,7 @@ let rec find_name_side s = function
     None ->
       raise Not_found
   | Some k ->
-      if Eliom_base.conform s (side k.ident)
+      if Eliom_base.conform ~scope:s ~id:(side k.ident)
       then k
       else find_name_side s k.previous
 
@@ -215,7 +215,7 @@ let rec find_side name s = function
   | Node(l, k, r, _) ->
       let c = compare name k.ident.name in
       if c = 0 then
-        if Eliom_base.conform s (side k.ident)
+        if Eliom_base.conform ~scope:s ~id:(side k.ident)
         then k
         else find_name_side s k.previous
       else

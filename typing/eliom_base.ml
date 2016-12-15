@@ -394,8 +394,11 @@ module Sideness = struct
 
   let gets l = List.map (fun (x,_) -> get x) l
 
-  let wrap (side:t) f x = match side with
-    | Same -> f x
-    | ClientTy -> in_loc Client (fun () -> f x)
+  let wrap (side:t) f = match side with
+    | Same -> f ()
+    | ClientTy -> in_loc Client (fun () -> f ())
 
+  let pp ppf = function
+    | Same -> Format.pp_print_string ppf "same"
+    | ClientTy -> Format.pp_print_string ppf "client"
 end
