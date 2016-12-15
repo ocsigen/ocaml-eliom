@@ -11,6 +11,7 @@ module Specialize : sig
 
   type 'a t = Eliom_base.side -> 'a -> 'a
 
+  val modtype : Types.module_type t
   val modtype_declaration : Types.modtype_declaration t
   val module_declaration : Types.module_declaration t
   val class_declaration : Types.class_declaration t

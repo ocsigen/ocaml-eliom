@@ -60,6 +60,10 @@ module Translate = struct
     let it = get side in
     it.it_signature it
 
+  let modtype side =
+    let it = get side in
+    it.it_module_type it
+
   let module_declaration side =
     let it = get side in
     it.it_module_declaration it
@@ -138,6 +142,11 @@ module Specialize = struct
         translate loc x' ;
         x'
     | None -> x
+
+  let modtype =
+    specialization_with
+      Subst.(modtype identity)
+      Translate.modtype
 
   let module_declaration =
     specialization_with

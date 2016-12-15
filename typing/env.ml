@@ -875,7 +875,8 @@ let rec lookup_module_descr_aux ?loc lid env =
       let {md_type=mty2} = find_module p2 env in
       begin match get_components desc1 with
         Functor_comps f ->
-          Misc.may (!check_modtype_inclusion env mty2 p2) f.fcomp_arg;
+          let mty1 = Misc.may_map (ETS.modtype Eliom_base.Poly) f.fcomp_arg in
+          Misc.may (!check_modtype_inclusion env mty2 p2) mty1;
           (Papply(p1, p2), !components_of_functor_appl' f env p1 p2)
       | Structure_comps c ->
           raise Not_found
@@ -933,7 +934,8 @@ and lookup_module ~load ?loc lid env : Path.t =
       let p = Papply(p1, p2) in
       begin match get_components desc1 with
         Functor_comps f ->
-          Misc.may (!check_modtype_inclusion env mty2 p2) f.fcomp_arg;
+          let mty1 = Misc.may_map (ETS.modtype Eliom_base.Poly) f.fcomp_arg in
+          Misc.may (!check_modtype_inclusion env mty2 p2) mty1;
           p
       | Structure_comps c ->
           raise Not_found
