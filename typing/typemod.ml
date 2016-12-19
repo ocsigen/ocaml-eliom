@@ -159,6 +159,7 @@ let merge_constraint initial_env loc sg constr =
        Pwith_type (_, ({ptype_kind = Ptype_abstract} as sdecl)))
       when Ident.name id = s && Typedecl.is_fixed_type sdecl ->
         let decl_row =
+          Eliom_typing.Sideness.annotate sdecl.ptype_params @@ (* ELIOM *)
           { type_params =
               List.map (fun _ -> Btype.newgenvar()) sdecl.ptype_params;
             type_arity = List.length sdecl.ptype_params;
@@ -177,7 +178,6 @@ let merge_constraint initial_env loc sg constr =
                    make (not n) (not c) false
                 )
                 sdecl.ptype_params;
-            type_sideness = Eliom_base.Sideness.gets sdecl.ptype_params;(*ELIOM*)
             type_loc = sdecl.ptype_loc;
             type_newtype_level = None;
             type_attributes = [];

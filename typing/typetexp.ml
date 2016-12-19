@@ -353,16 +353,17 @@ let rec transl_type env policy styp =
       (*ELIOM*)
       (* Switch side to client when looking inside type constructor
          whose parameters have been marked with [@client]. *)
-      assert (decl.type_arity = List.length decl.type_sideness) ;
+      let sideness_list = Eliom_typing.Sideness.of_tydecl decl in
+      assert (decl.type_arity = List.length sideness_list) ;
       let args =
         List.map2
           (fun x side ->
              let x =
-               Eliom_base.Sideness.wrap side
+               Eliom_typing.Sideness.wrap side
                  (fun () -> transl_type env policy x)
              in
              x , side)
-          stl decl.type_sideness
+          stl sideness_list
       in
       (*/ELIOM*)
       let params = instance_list decl.type_params in
@@ -375,7 +376,7 @@ let rec transl_type env policy styp =
       List.iter2
         (fun (sty, (cty, side(*ELIOM*)) ) ty' ->
             try
-              Eliom_base.Sideness.wrap side @@ fun () -> (*ELIOM*)
+              Eliom_typing.Sideness.wrap side @@ fun () -> (*ELIOM*)
               unify_param env ty' cty.ctyp_type with Unify trace ->
              raise (Error(sty.ptyp_loc, env, Type_mismatch (swap_list trace))))
         (List.combine stl args) params;

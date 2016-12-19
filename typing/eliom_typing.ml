@@ -232,3 +232,206 @@ let is_fragment ~loc ~env p =
 let fragment ~loc ~env t =
   let fragment_path, _ = try_resolve loc env in
   Btype.newgenty (Tconstr(fragment_path, [t], ref Mnil))
+
+
+module Sideness = struct
+  open Btype
+
+  type t = Eliom_base.side
+
+  let attr_name = "eliom.sideness"
+  let sep = ','
+
+  (** Getting the info out of a type declaration *)
+
+  let rec mk_side_list i acc =
+    if i <= 0 then acc else mk_side_list (i-1) (Eliom_base.Poly :: acc)
+
+  let of_tydecl (tydecl : Types.type_declaration) =
+    let loc = tydecl.type_loc in
+    let attrs = tydecl.type_attributes in
+    let attrs =
+      List.find_all (fun (x,_) -> x.Location.txt = attr_name) attrs
+    in
+    match attrs with
+    | [] -> mk_side_list tydecl.type_arity []
+    | [ _, PStr [{pstr_desc=Pstr_eval (
+        {pexp_desc=Pexp_constant (Pconst_string (s,_))}
+      ,_)}]] ->
+        List.map Eliom_base.of_string @@ Misc.split s sep
+    | [_] ->
+        Eliom_base.error ~loc "Malformed sideness annotation in cmi file."
+    | _ ->
+        Eliom_base.error ~loc "Multiple sideness annotation in cmi file."
+
+  let wrap (side:t) f = match side with
+    | Poly -> f ()
+    | Loc l -> Eliom_base.in_loc l (fun () -> f ())
+
+
+  (** Checking the side of a type declaration *)
+
+  let find visited ty =
+    try Some (TypeMap.find ty !visited)
+    with Not_found -> None
+
+  type error =
+    | WrongSideness of
+        { ty : Types.type_expr ;
+          side : t ;
+          scope : t ;
+        }
+  exception Error of error
+
+  let fail ~side ~scope ~ty =
+    raise (Error (WrongSideness {ty; side; scope}))
+
+  (* Simplified copy of Typedecl.compute_variance_rec *)
+  let rec check_rec env visited scope ty =
+    let ty = Ctype.repr ty in
+    match find visited ty with
+    | Some side ->
+        if scope = side then ()
+        else fail ~ty ~side ~scope
+    | None -> begin
+        visited := TypeMap.add ty scope !visited;
+        let check_same = check_rec env visited scope in
+        match ty.desc with
+        | Tconstr (path, tl, _) ->
+            if tl = [] then () else begin
+              try
+                let decl = Env.find_type path env in
+                let sideness = of_tydecl decl in
+                List.iter2 (check_rec env visited) sideness tl
+              with Not_found ->
+                List.iter check_same tl
+            end
+
+        | Tvar _ | Tnil | Tlink _ | Tunivar _ -> ()
+
+        | Tobject (ty, _)
+        | Tsubst ty
+        | Tpoly (ty, _) ->
+            check_same ty
+
+        | Tarrow (_, ty1, ty2, _)
+        | Tfield (_, _, ty1, ty2) ->
+            check_same ty1; check_same ty2
+
+        | Tpackage (_, _, tl)
+        | Ttuple tl ->
+            List.iter check_same tl
+
+        | Tvariant row ->
+            let row = Btype.row_repr row in
+            List.iter
+              (fun (_,f) ->
+                 match Btype.row_field_repr f with
+                   Rpresent (Some ty) ->
+                     check_same ty
+                 | Reither (_, tyl, _, _) ->
+                     List.iter check_same tyl
+                 | _ -> ())
+              row.row_fields;
+            check_same row.row_more
+
+      end
+
+  let gather_tys_variant args res acc =
+    let for_constr = function
+      | Types.Cstr_tuple l -> l
+      | Types.Cstr_record l ->
+          List.map (fun {ld_type} -> ld_type) l
+    in
+    let l = for_constr args @ acc in
+    match res with None -> l | Some ty -> ty :: l
+
+  let gather_tys decl =
+    let mn =
+      match decl.type_manifest with
+        None -> []
+      | Some ty -> [ty]
+    in
+    match decl.type_kind with
+      Type_abstract | Type_open -> mn
+    | Type_variant tll ->
+        List.fold_left
+          (fun acc v -> gather_tys_variant v.cd_args v.cd_res acc)
+          mn tll
+    | Type_record (ftl, _) ->
+        mn @ List.map (fun {Types.ld_type} -> ld_type) ftl
+
+  let check_internal env sides params tys =
+    let scope = Eliom_base.get_side () in
+    let init_map = List.fold_right2 TypeMap.add params sides TypeMap.empty in
+    let visited = ref init_map in
+    List.iter (check_rec env visited scope) tys
+
+  let check env decl =
+    let sides = of_tydecl decl in
+    let tys = gather_tys decl in
+    check_internal env sides decl.type_params tys
+
+  let check_extension env decl ext =
+    let sides = of_tydecl decl in
+    let tys =
+      gather_tys_variant ext.ext_args ext.ext_ret_type []
+    in
+    check_internal env sides ext.ext_type_params tys
+
+
+  (** Getting the info out of the AST *)
+
+  let get ptyp : t =
+    let open! Eliom_base in
+    let open Parsetree in
+    let sides : loc list ref = ref [] in
+    let () =
+      List.iter (function
+        | {Location.txt = "client"|"eliom.client" }, payload ->
+            begin match payload with
+            | PStr [] -> sides := Client :: !sides
+            | _ -> error ~loc:ptyp.ptyp_loc
+                  "Malformed sideness annotation. It should be [@client] \
+                   or [@eliom.client]."
+            end
+        | {Location.txt = "server"|"eliom.server" }, payload ->
+            begin match payload with
+            | PStr [] -> sides := Server :: !sides
+            | _ -> error ~loc:ptyp.ptyp_loc
+                  "Malformed sideness annotation. It should be [@server] \
+                   or [@eliom.server]."
+            end
+        | _ -> ())
+        ptyp.ptyp_attributes
+    in
+    match !sides with
+    | [] -> Poly
+    | [loc] -> Loc loc
+    | _ ->
+        error ~loc:ptyp.ptyp_loc
+          "Multiple sideness annotation. There should only be one \
+           sideness annotation per parameter."
+
+  let gets l = List.map (fun (x,_) -> get x) l
+
+  (** Annotating type declarations with sideness info *)
+
+  let to_attr loc l =
+    let open Ast_helper in
+    let sep = String.make 1 sep in
+    let s = String.concat sep @@ List.map Eliom_base.to_string l in
+    let payload =
+      Str.eval ~loc (Exp.constant ~loc (Const.string s))
+    in
+    Location.mkloc attr_name loc, Parsetree.PStr [payload]
+
+  let annotate params tydecl =
+    let params = gets params in
+    if params = [] || List.for_all ((=) Eliom_base.Poly) params
+    then tydecl
+    else
+      let attr = to_attr tydecl.Types.type_loc params in
+      {tydecl with type_attributes = attr :: tydecl.type_attributes}
+
+end

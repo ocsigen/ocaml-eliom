@@ -290,7 +290,6 @@ type type_declaration =
     type_manifest: type_expr option;
     type_variance: Variance.t list;
     (* covariant, contravariant, weakly contravariant, injective *)
-    type_sideness: Eliom_base.Sideness.t list; (*ELIOM*)
     type_newtype_level: (int * int) option;
     (* definition level * expansion level *)
     type_loc: Location.t;

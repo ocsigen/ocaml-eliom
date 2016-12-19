@@ -1207,13 +1207,14 @@ let temp_abbrev loc env id arity =
   let ty = Ctype.newobj (Ctype.newvar ()) in
   let env =
     Env.add_type ~check:true id
+      (* ELIOM : No need to add sideness here.
+         We just keep the same side everywhere. *)
       {type_params = !params;
        type_arity = arity;
        type_kind = Type_abstract;
        type_private = Public;
        type_manifest = Some ty;
        type_variance = Misc.replicate_list Variance.full arity;
-       type_sideness = Misc.replicate_list Eliom_base.Sideness.Same arity; (*ELIOM*)
        type_newtype_level = None;
        type_loc = loc;
        type_attributes = []; (* or keep attrs from the class decl? *)
@@ -1455,13 +1456,13 @@ let class_infos define_class kind
     }
   in
   let obj_abbr =
+    Eliom_typing.Sideness.annotate cl.pci_params @@ (* ELIOM *)
     {type_params = obj_params;
      type_arity = List.length obj_params;
      type_kind = Type_abstract;
      type_private = Public;
      type_manifest = Some obj_ty;
      type_variance = List.map (fun _ -> Variance.full) obj_params;
-     type_sideness = Eliom_base.Sideness.gets cl.pci_params; (*ELIOM*)
      type_newtype_level = None;
      type_loc = cl.pci_loc;
      type_attributes = []; (* or keep attrs from cl? *)
@@ -1474,13 +1475,13 @@ let class_infos define_class kind
   Ctype.hide_private_methods cl_ty;
   Ctype.set_object_name obj_id (Ctype.row_variable cl_ty) cl_params cl_ty;
   let cl_abbr =
+    Eliom_typing.Sideness.annotate cl.pci_params @@ (* ELIOM *)
     {type_params = cl_params;
      type_arity = List.length cl_params;
      type_kind = Type_abstract;
      type_private = Public;
      type_manifest = Some cl_ty;
      type_variance = List.map (fun _ -> Variance.full) cl_params;
-     type_sideness = Eliom_base.Sideness.gets cl.pci_params; (*ELIOM*)
      type_newtype_level = None;
      type_loc = cl.pci_loc;
      type_attributes = []; (* or keep attrs from cl? *)

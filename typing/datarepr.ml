@@ -76,7 +76,6 @@ let constructor_args cd_args cd_res path rep =
           type_private = Public;
           type_manifest = None;
           type_variance = List.map (fun _ -> Variance.full) type_params;
-          type_sideness = List.map (fun _ -> Eliom_base.Sideness.Same) type_params; (*ELIOM*)
           type_newtype_level = None;
           type_loc = Location.none;
           type_attributes = [];

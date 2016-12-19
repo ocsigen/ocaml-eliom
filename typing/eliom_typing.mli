@@ -47,3 +47,29 @@ end
 val is_fragment : loc:Location.t -> env:Env.t -> Path.t -> bool
 val fragment :
   loc:Location.t -> env:Env.t -> Types.type_expr -> Types.type_expr
+
+(** Sideness annotations.
+
+    Allow to write mixed datatypes in eliom files, such as
+    {[
+      type%server ('a[@client]) foo = int * 'a fragment
+    ]}
+
+    The sideness annotations are encoded in attributes of type declarations.
+*)
+module Sideness : sig
+
+  type t = Eliom_base.side
+
+  val annotate :
+    (Parsetree.core_type * _ ) list ->
+    Types.type_declaration -> Types.type_declaration
+  val of_tydecl : Types.type_declaration -> t list
+
+  val wrap : t -> (unit -> 'a) -> 'a
+
+  val check : Env.t -> Types.type_declaration -> unit
+  val check_extension :
+    Env.t -> Types.type_declaration -> Types.extension_constructor -> unit
+
+end
