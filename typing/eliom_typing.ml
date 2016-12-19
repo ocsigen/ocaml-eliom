@@ -205,7 +205,7 @@ let fragment_lid = Longident.parse "Eliom_runtime.fragment"
 let fragment_type = ref `NotResolved
 let error ~loc =
   Eliom_base.error ~loc
-    "Could not found Eliom_runtime.fragment.@ \
+    "Could not find Eliom_runtime.fragment.@ \
      Please load the server runtime library.@."
 let try_resolve loc env = match !fragment_type with
   | `Resolved x -> x
