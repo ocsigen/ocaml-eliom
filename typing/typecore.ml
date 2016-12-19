@@ -2090,11 +2090,14 @@ and type_expect_ ?in_function ?(recarg=Rejected) env sexp ty_expected =
     let cst = constant_or_raise env loc cst in
     (* Terrible hack for format strings *)
     let ty_exp = expand_head env ty_expected in
-    let fmt6_path =
-      Path.(Pdot (Pident (Ident.create_persistent "CamlinternalFormatBasics"),
-                  "format6", 0)) in
+    let test_format_path = let open Path in function
+        | Pdot (Pident id, "format6", _) when
+            Ident.name id = "CamlinternalFormatBasics" && Ident.persistent id
+          -> true
+        | _ -> false
+    in
     let is_format = match ty_exp.desc with
-      | Tconstr(path, _, _) when Path.same path fmt6_path ->
+      | Tconstr(path, _, _) when test_format_path path  ->
         if !Clflags.principal && ty_exp.level <> generic_level then
           Location.prerr_warning loc
             (Warnings.Not_principal "this coercion to format6");
