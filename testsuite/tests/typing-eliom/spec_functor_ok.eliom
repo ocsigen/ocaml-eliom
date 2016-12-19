@@ -5,3 +5,11 @@ module%client M = struct
 end
 
 module%client N = Set.Make(M)
+
+
+
+module%client F (A : Set.OrderedType) =
+  module type T = module type of A
+end
+
+module type%client X = F(String).T
