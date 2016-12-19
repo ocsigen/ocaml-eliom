@@ -45,10 +45,13 @@ let show_side i = let open Eliom_base in match side i with
   | Loc Server -> "@s"
   | Poly -> ""
 
-let change_side s i =
-  i.flags <-
-    (i.flags land (lnot @@ (client_flag lor server_flag)))
-    lor (side_to_flag s)
+let flag_with_side s flg =
+  (flg land (lnot @@ (client_flag lor server_flag)))
+  lor (side_to_flag s)
+
+let change_side s i = i.flags <- flag_with_side s i.flags
+
+let with_side s i = {i with flags = flag_with_side s i.flags }
 
 (* /ELIOM *)
 
@@ -69,7 +72,8 @@ let create_persistent ?(side=Eliom_base.get_side ()) s =
 
 let rename i =
   incr currentstamp;
-  { i with stamp = !currentstamp }
+  let flags = flag_with_side (Eliom_base.get_side ()) i.flags in
+  { i with stamp = !currentstamp ; flags }
 
 let name i = i.name
 

@@ -168,4 +168,24 @@ module Specialize = struct
       Subst.(cltype_declaration identity)
       Translate.class_type_declaration
 
+  let copy_ident side i =
+    if Ident.side i = side
+    then i (* Keep the same ident, the typechecker uses == *)
+    else Ident.with_side side i
+
+  let rec copy_path side : Path.t -> Path.t = function
+    | Pident id -> Pident (copy_ident side id)
+    | Pdot(p, s, pos) -> Pdot (copy_path side p, s, pos)
+    | Papply(p1, p2) -> Papply (copy_path side p1, copy_path side p2)
+
+  let ident p =
+    let scope = Eliom_base.get_side () in
+    if scope = Eliom_base.Poly then p
+    else copy_ident scope p
+
+  let path p =
+    let scope = Eliom_base.get_side () in
+    if scope = Eliom_base.Poly then p
+    else copy_path scope p
+
 end

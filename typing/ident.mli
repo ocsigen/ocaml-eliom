@@ -80,4 +80,5 @@ include Identifiable.S with type t := t
 (* ELIOM *)
 val side : t -> Eliom_base.side
 val change_side : Eliom_base.side -> t -> unit
+val with_side : Eliom_base.side -> t -> t
 val find_ident : string -> _ tbl -> t

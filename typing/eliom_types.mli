@@ -17,4 +17,6 @@ module Specialize : sig
   val class_declaration : Types.class_declaration t
   val class_type_declaration : Types.class_type_declaration t
 
+  val ident : Ident.t -> Ident.t
+  val path : Path.t -> Path.t
 end
