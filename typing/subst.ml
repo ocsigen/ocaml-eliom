@@ -377,7 +377,7 @@ let rec modtype ?(renew=true) s = function
   | Mty_signature sg ->
       Mty_signature(signature ~renew s sg)
   | Mty_functor(id, arg, res) ->
-      let id' = if renew then Ident.rename id else id in
+      let id' = if renew then Ident.rename id else Ident.with_side (Eliom_base.get_side ()) id in
       Mty_functor(id', may_map (modtype ~renew s) arg,
                        modtype ~renew (add_module id (Pident id') s) res)
   | Mty_alias p ->
@@ -412,21 +412,22 @@ and signature_component s comp newid =
       Sig_class_type(newid, cltype_declaration s d, rs)
 
 and signature_component_no_renew s comp =
+  let f = Ident.with_side (Eliom_base.get_side ()) in
   match comp with
     Sig_value(id, d) ->
-      Sig_value(id, value_description s d)
+      Sig_value(f id, value_description s d)
   | Sig_type(id, d, rs) ->
-      Sig_type(id, type_declaration s d, rs)
+      Sig_type(f id, type_declaration s d, rs)
   | Sig_typext(id, ext, es) ->
-      Sig_typext(id, extension_constructor s ext, es)
+      Sig_typext(f id, extension_constructor s ext, es)
   | Sig_module(id, d, rs) ->
-      Sig_module(id, module_declaration ~renew:false s d, rs)
+      Sig_module(f id, module_declaration ~renew:false s d, rs)
   | Sig_modtype(id, d) ->
-      Sig_modtype(id, modtype_declaration ~renew:false s d)
+      Sig_modtype(f id, modtype_declaration ~renew:false s d)
   | Sig_class(id, d, rs) ->
-      Sig_class(id, class_declaration s d, rs)
+      Sig_class(f id, class_declaration s d, rs)
   | Sig_class_type(id, d, rs) ->
-      Sig_class_type(id, cltype_declaration s d, rs)
+      Sig_class_type(f id, cltype_declaration s d, rs)
 
 and module_declaration ?(renew=true) s decl =
   {

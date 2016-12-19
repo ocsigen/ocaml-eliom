@@ -883,9 +883,9 @@ let rec lookup_module_descr_aux ?loc lid env =
       end
 
 and lookup_module_descr ?loc lid env =
-  let (p, comps) as res = lookup_module_descr_aux ?loc lid env in
+  let (p, comps) = lookup_module_descr_aux ?loc lid env in
   report_deprecated ?loc p comps.deprecated;
-  res
+  (ETS.path(*ELIOM*) p, comps)
 
 and lookup_module ~load ?loc lid env : Path.t =
   match lid with
@@ -941,6 +941,11 @@ and lookup_module ~load ?loc lid env : Path.t =
           raise Not_found
       end
 
+(* ELIOM, Specialize the path to the current side before returning *)
+let lookup_module ~load ?loc lid env =
+  ETS.path @@ lookup_module ~load ?loc lid env
+(* /ELIOM *)
+
 let lookup proj1 proj2 specialize ?loc lid env =
   match lid with
     Lident s ->
@@ -961,6 +966,12 @@ let lookup proj1 proj2 specialize ?loc lid env =
       end
   | Lapply(l1, l2) ->
       raise Not_found
+
+(* ELIOM, Specialize the path to the current side before returning *)
+let lookup proj1 proj2 specialize ?loc lid env =
+  let p, res = lookup proj1 proj2 specialize ?loc lid env in
+  ETS.path p, res
+(* /ELIOM *)
 
 let lookup_all_simple proj1 proj2 shadow ?loc lid env =
   match lid with

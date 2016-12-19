@@ -961,7 +961,7 @@ let rec copy ?env ?partial ?keep_names ty =
              ation can be released by changing the content of just
              one reference.
           *)
-              Eliom_types.translate_path p ;
+              let p = Eliom_types.Specialize.path p in (* ELIOM *)
               Tconstr (p, List.map copy tl,
                        ref (match !(!abbreviations) with
                               Mcons _ -> Mlink !abbreviations
