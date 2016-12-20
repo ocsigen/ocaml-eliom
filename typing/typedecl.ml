@@ -1159,6 +1159,9 @@ let transl_type_decl env rec_flag sdecl_list =
       (List.map init_variance decls)
       (List.map (fun _ -> false) decls)
   in
+  (* ELIOM Check well-sideness *)
+  List.iter (fun (_,d) -> Eliom_typing.Sideness.check env d) final_decls ;
+  (* /ELIOM *)
   (* Check re-exportation *)
   List.iter2 (check_abbrev final_env) sdecl_list final_decls;
   (* Keep original declaration *)
@@ -1361,6 +1364,12 @@ let transl_type_extension check_open env loc styext =
       ignore (compute_variance_extension env true type_decl
                 ext.ext_type (type_variance, loc)))
     constructors;
+  (* ELIOM Check Well-sideness *)
+  List.iter
+    (fun ext->
+       Eliom_typing.Sideness.check_extension env type_decl ext.ext_type)
+    constructors;
+  (* /ELIOM *)
   (* Add extension constructors to the environment *)
   let newenv =
     List.fold_left
