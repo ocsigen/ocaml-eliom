@@ -433,4 +433,9 @@ module Sideness = struct
       let attr = to_attr tydecl.Types.type_loc params in
       {tydecl with type_attributes = attr :: tydecl.type_attributes}
 
+  (** Checking inclusion of sideness *)
+
+  let included (annot1 : t list) annot2 =
+    (annot1 = annot2)
+
 end

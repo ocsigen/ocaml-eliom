@@ -72,4 +72,6 @@ module Sideness : sig
   val check_extension :
     Env.t -> Types.type_declaration -> Types.extension_constructor -> unit
 
+  val included : t list -> t list -> bool
+
 end

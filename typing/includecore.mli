@@ -34,6 +34,7 @@ type type_mismatch =
   | Field_missing of bool * Ident.t
   | Record_representation of bool
   | Immediate
+  | Sideness (* ELIOM *)
 
 val value_descriptions:
     Env.t -> value_description -> value_description -> module_coercion

@@ -128,6 +128,7 @@ type type_mismatch =
   | Field_missing of bool * Ident.t
   | Record_representation of bool
   | Immediate
+  | Sideness (* ELIOM *)
 
 let report_type_mismatch0 first second decl ppf err =
   let pr fmt = Format.fprintf ppf fmt in
@@ -155,6 +156,7 @@ let report_type_mismatch0 first second decl ppf err =
         (if b then second else first) decl
         "uses unboxed float representation"
   | Immediate -> pr "%s is not an immediate type" first
+  | Sideness -> pr "Their sideness anotations differ"
 
 let report_type_mismatch first second decl ppf =
   List.iter
@@ -216,6 +218,10 @@ and compare_records env params1 params2 n labels1 labels2 =
       else [Field_type lab1]
 
 let type_declarations ?(equality = false) env name decl1 id decl2 =
+  (* ELIOM *)
+  if not Eliom_typing.Sideness.(included (of_tydecl decl1) (of_tydecl decl2))
+  then [Sideness] else
+  (* /ELIOM *)
   if decl1.type_arity <> decl2.type_arity then [Arity] else
   if not (private_flags decl1 decl2) then [Privacy] else
   let err = match (decl1.type_manifest, decl2.type_manifest) with
