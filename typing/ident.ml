@@ -70,9 +70,25 @@ let create_predef_exn ?(side=Eliom_base.get_side ()) s =
 let create_persistent ?(side=Eliom_base.get_side ()) s =
   { name = s; stamp = 0; flags = global_flag lor side_to_flag side }
 
+(* ELIOM *)
+let test ~scope ~idside =
+  let open Eliom_base in
+  match idside, scope with
+  | Poly, Loc l -> Some l
+  | _ , Poly -> None
+  | Loc _, _ -> None
+
+let new_flag id =
+  let idside = side id in
+  let scope = Eliom_base.get_side () in
+  match test ~scope ~idside with
+  | Some l -> flag_with_side (Eliom_base.Loc l) id.flags
+  | None -> id.flags
+(* /ELIOM *)
+
 let rename i =
   incr currentstamp;
-  let flags = flag_with_side (Eliom_base.get_side ()) i.flags in
+  let flags = new_flag i in (*ELIOM*)
   { i with stamp = !currentstamp ; flags }
 
 let name i = i.name

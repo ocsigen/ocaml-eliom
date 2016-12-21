@@ -161,10 +161,11 @@ module Specialize = struct
       Subst.(cltype_declaration identity)
       Translate.class_type_declaration
 
-  let copy_ident side i =
-    if Ident.side i = side
-    then i (* Keep the same ident, the typechecker uses == *)
-    else Ident.with_side side i
+  let copy_ident scope i =
+    let idside = Ident.side i in
+    match test ~scope ~idside with
+    | None -> i (* Keep the same ident, the typechecker uses == *)
+    | Some l -> Ident.with_side (Loc l) i
 
   let rec copy_path side : Path.t -> Path.t = function
     | Pident id -> Pident (copy_ident side id)
