@@ -1,3 +1,5 @@
+(** Test resolution of aliases across sides
+    during inclusion between types *)
 
 type foo
 

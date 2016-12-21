@@ -8,7 +8,7 @@ module%client N = Set.Make(M)
 
 
 
-module%client F (A : Set.OrderedType) =
+module%client F (A : Set.OrderedType) = struct
   module type T = module type of A
 end
 
