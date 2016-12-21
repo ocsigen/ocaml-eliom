@@ -187,7 +187,8 @@ typing/printtyp.cmi : typing/types.cmi typing/path.cmi \
     typing/env.cmi parsing/asttypes.cmi
 typing/stypes.cmi : typing/typedtree.cmi parsing/location.cmi \
     typing/annot.cmi
-typing/subst.cmi : typing/types.cmi typing/path.cmi typing/ident.cmi
+typing/subst.cmi : typing/types.cmi typing/path.cmi typing/ident.cmi \
+    typing/eliom_base.cmi
 typing/tast_mapper.cmi : typing/typedtree.cmi typing/env.cmi \
     parsing/asttypes.cmi
 typing/typeclass.cmi : typing/types.cmi typing/typedtree.cmi \
@@ -300,12 +301,12 @@ typing/includeclass.cmx : typing/types.cmx typing/printtyp.cmx \
     typing/ctype.cmx typing/includeclass.cmi
 typing/includecore.cmo : typing/types.cmi typing/typedtree.cmi \
     typing/path.cmi utils/misc.cmi typing/ident.cmi typing/env.cmi \
-    typing/ctype.cmi typing/btype.cmi parsing/asttypes.cmi \
-    typing/includecore.cmi
+    typing/eliom_typing.cmi typing/ctype.cmi typing/btype.cmi \
+    parsing/asttypes.cmi typing/includecore.cmi
 typing/includecore.cmx : typing/types.cmx typing/typedtree.cmx \
     typing/path.cmx utils/misc.cmx typing/ident.cmx typing/env.cmx \
-    typing/ctype.cmx typing/btype.cmx parsing/asttypes.cmi \
-    typing/includecore.cmi
+    typing/eliom_typing.cmx typing/ctype.cmx typing/btype.cmx \
+    parsing/asttypes.cmi typing/includecore.cmi
 typing/includemod.cmo : typing/types.cmi typing/typedtree.cmi \
     typing/subst.cmi typing/printtyp.cmi typing/primitive.cmi typing/path.cmi \
     typing/mtype.cmi utils/misc.cmi parsing/location.cmi \
@@ -366,26 +367,28 @@ typing/printtyp.cmo : typing/types.cmi typing/primitive.cmi \
     typing/predef.cmi typing/path.cmi parsing/parsetree.cmi \
     typing/outcometree.cmi typing/oprint.cmi utils/misc.cmi \
     parsing/longident.cmi parsing/location.cmi typing/ident.cmi \
-    typing/env.cmi typing/eliom_base.cmi typing/ctype.cmi utils/clflags.cmi \
-    typing/btype.cmi parsing/asttypes.cmi typing/printtyp.cmi
+    typing/env.cmi typing/eliom_types.cmi typing/eliom_base.cmi \
+    typing/ctype.cmi utils/clflags.cmi typing/btype.cmi parsing/asttypes.cmi \
+    typing/printtyp.cmi
 typing/printtyp.cmx : typing/types.cmx typing/primitive.cmx \
     typing/predef.cmx typing/path.cmx parsing/parsetree.cmi \
     typing/outcometree.cmi typing/oprint.cmx utils/misc.cmx \
     parsing/longident.cmx parsing/location.cmx typing/ident.cmx \
-    typing/env.cmx typing/eliom_base.cmx typing/ctype.cmx utils/clflags.cmx \
-    typing/btype.cmx parsing/asttypes.cmi typing/printtyp.cmi
+    typing/env.cmx typing/eliom_types.cmx typing/eliom_base.cmx \
+    typing/ctype.cmx utils/clflags.cmx typing/btype.cmx parsing/asttypes.cmi \
+    typing/printtyp.cmi
 typing/stypes.cmo : typing/typedtree.cmi typing/printtyp.cmi \
     parsing/location.cmi utils/clflags.cmi typing/annot.cmi typing/stypes.cmi
 typing/stypes.cmx : typing/typedtree.cmx typing/printtyp.cmx \
     parsing/location.cmx utils/clflags.cmx typing/annot.cmi typing/stypes.cmi
-typing/subst.cmo : typing/types.cmi utils/tbl.cmi typing/path.cmi \
-    utils/misc.cmi parsing/location.cmi typing/ident.cmi \
-    typing/eliom_base.cmi utils/clflags.cmi typing/btype.cmi \
-    parsing/ast_mapper.cmi typing/subst.cmi
-typing/subst.cmx : typing/types.cmx utils/tbl.cmx typing/path.cmx \
-    utils/misc.cmx parsing/location.cmx typing/ident.cmx \
-    typing/eliom_base.cmx utils/clflags.cmx typing/btype.cmx \
-    parsing/ast_mapper.cmx typing/subst.cmi
+typing/subst.cmo : typing/types.cmi typing/path.cmi utils/misc.cmi \
+    parsing/location.cmi typing/ident.cmi typing/eliom_base.cmi \
+    utils/clflags.cmi typing/btype.cmi parsing/ast_mapper.cmi \
+    typing/subst.cmi
+typing/subst.cmx : typing/types.cmx typing/path.cmx utils/misc.cmx \
+    parsing/location.cmx typing/ident.cmx typing/eliom_base.cmx \
+    utils/clflags.cmx typing/btype.cmx parsing/ast_mapper.cmx \
+    typing/subst.cmi
 typing/tast_mapper.cmo : typing/typedtree.cmi typing/env.cmi \
     parsing/asttypes.cmi typing/tast_mapper.cmi
 typing/tast_mapper.cmx : typing/typedtree.cmx typing/env.cmx \
