@@ -1945,7 +1945,8 @@ and type_injection env e ty_expected =
   | _ ->
       generalize ty_injected ;
       if closed_schema env ty_injected then
-        match Eliom_typing.translate Eliom_base.Client env ty_injected with
+        match Eliom_typing.find_correspondance
+            Eliom_base.Client env ty_injected with
         | Ok found_ty ->
             (* Format.printf "Translation found: %a@." *)
             (*   Printtyp.raw_type_expr found_ty ; *)

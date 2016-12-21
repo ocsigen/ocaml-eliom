@@ -1,7 +1,7 @@
 [@@@ocaml.warning "+a-4-9-40-42"]
 open Types
 
-module Translate = struct
+module Correspondance = struct
 
   let rec longident_of_path = function
     | Path.Pident id ->
@@ -13,29 +13,29 @@ module Translate = struct
 
   exception No_translation of Path.t
 
-  let path f p =
+  let path lookup env p =
     let lid = longident_of_path p in
     let new_p, _ =
-      try f lid
+      try lookup ?loc:None lid env
       with Not_found -> raise (No_translation p)
     in
     new_p
 
-  let rec expression f expr = match expr.desc with
+  let rec expression env expr = match expr.desc with
     | Tconstr (p,args,_abbrev) ->
         let desc = Tconstr
-            (f p,
-             List.map (expression f) args,
+            (path Env.lookup_type env p,
+             List.map (expression env) args,
              ref Mnil)
         in
         {expr with desc}
 
-    | Tlink t -> expression f t
+    | Tlink t -> expression env t
 
     | Tpackage (p,n,l) ->
         let desc = Tpackage (
-            f p,
-            n, List.map (expression f) l)
+            path Env.lookup_modtype env p,
+            n, List.map (expression env) l)
         in
         {expr with desc}
 
@@ -59,19 +59,18 @@ module Translate = struct
 
       as ty ->
         {expr with
-         desc = Btype.copy_type_desc ~keep_names:true (expression f) ty
+         desc = Btype.copy_type_desc ~keep_names:true (expression env) ty
         }
 
 
   let go loc env expr =
     Eliom_base.in_loc loc @@ fun () ->
-    let f = path (fun id -> Env.lookup_type id env) in
-    try Ok (expression f expr)
+    try Ok (expression env expr)
     with No_translation p -> Error p
 
 end
 
-let translate = Translate.go
+let find_correspondance = Correspondance.go
 
 
 module Error_msg = struct

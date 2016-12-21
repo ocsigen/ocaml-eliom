@@ -5,7 +5,7 @@
 
 [@@@ocaml.warning "+a-4-9-40-42"]
 
-val translate :
+val find_correspondance :
   Eliom_base.loc ->
   Env.t -> Types.type_expr -> (Types.type_expr, Path.t) result
 
