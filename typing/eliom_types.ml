@@ -83,12 +83,6 @@ module Translate = struct
 end
 
 let translate = Translate.signature
-let translate_path p =
-  match Eliom_base.get_side () with
-  | Poly -> ()
-  | Loc side ->
-      let it = Translate.get side in
-      it.it_path p
 
 let global_side s =
   let open Eliom_base in
@@ -120,7 +114,6 @@ let is_mixed s = global_side s = `Mixed
     module%client S = Set.Make(M)
 *)
 module Specialize = struct
-
 
   type 'a t = Eliom_base.side -> 'a -> 'a
 

@@ -3,7 +3,6 @@
 val cmi_magic_number : string
 
 val translate : Eliom_base.loc -> Types.signature -> unit
-val translate_path : Path.t -> unit
 
 val is_mixed : Types.signature -> bool
 
