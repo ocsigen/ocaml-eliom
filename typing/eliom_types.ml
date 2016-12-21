@@ -172,14 +172,21 @@ module Specialize = struct
     | Pdot(p, s, pos) -> Pdot (copy_path side p, s, pos)
     | Papply(p1, p2) -> Papply (copy_path side p1, copy_path side p2)
 
-  let ident p =
-    let scope = Eliom_base.get_side () in
-    if scope = Eliom_base.Poly then p
-    else copy_ident scope p
+  let ident' scope i =
+    if scope = Eliom_base.Poly then i
+    else copy_ident scope i
 
-  let path p =
-    let scope = Eliom_base.get_side () in
+  let ident i = ident' (Eliom_base.get_side ()) i
+
+  let path' scope p =
     if scope = Eliom_base.Poly then p
     else copy_path scope p
 
+  let path p = path' (Eliom_base.get_side ()) p
+
 end
+
+let () =
+  Subst.specialize_path := Specialize.path' ;
+  Subst.specialize_modtype := Specialize.modtype ;
+  ()

@@ -20,10 +20,15 @@ open Path
 open Types
 open Btype
 
+let specialize_path = ref (fun _ p -> p)
+let specialize_modtype = ref (fun _ p -> p)
+
+module Tbl = Ident
+
 type t =
-  { types: (Ident.t, Path.t) Tbl.t;
-    modules: (Ident.t, Path.t) Tbl.t;
-    modtypes: (Ident.t, module_type) Tbl.t;
+  { types: Path.t Ident.tbl;
+    modules: Path.t Ident.tbl;
+    modtypes: module_type Ident.tbl;
     for_saving: bool;
     nongen_level: int }
 
@@ -67,7 +72,9 @@ let attrs s x =
 
 let rec module_path s = function
     Pident id as p ->
-      begin try Tbl.find id s.modules with Not_found -> p end
+      begin try
+        !specialize_path (Ident.side id) @@ Tbl.find_same id s.modules
+      with Not_found -> !specialize_path (Ident.side id) p end
   | Pdot(p, n, pos) ->
       Pdot(module_path s p, n, pos)
   | Papply(p1, p2) ->
@@ -76,10 +83,10 @@ let rec module_path s = function
 let modtype_path s = function
     Pident id as p ->
       begin try
-        match Tbl.find id s.modtypes with
-          | Mty_ident p -> p
+        match Tbl.find_same id s.modtypes with
+          | Mty_ident p -> !specialize_path (Ident.side id) p
           | _ -> fatal_error "Subst.modtype_path"
-      with Not_found -> p end
+      with Not_found -> !specialize_path (Ident.side id) p end
   | Pdot(p, n, pos) ->
       Pdot(module_path s p, n, pos)
   | Papply(p1, p2) ->
@@ -87,7 +94,9 @@ let modtype_path s = function
 
 let type_path s = function
     Pident id as p ->
-      begin try Tbl.find id s.types with Not_found -> p end
+      begin try
+        !specialize_path (Ident.side id) @@ Tbl.find_same id s.types
+      with Not_found -> !specialize_path (Ident.side id) p end
   | Pdot(p, n, pos) ->
       Pdot(module_path s p, n, pos)
   | Papply(p1, p2) ->
@@ -367,7 +376,9 @@ let rec modtype ?(renew=true) s = function
     Mty_ident p as mty ->
       begin match p with
         Pident id ->
-          begin try Tbl.find id s.modtypes with Not_found -> mty end
+          begin try
+            !specialize_modtype (Ident.side id) @@ Tbl.find_same id s.modtypes
+          with Not_found -> !specialize_modtype (Ident.side id) mty end
       | Pdot(p, n, pos) ->
           Mty_ident(Pdot(module_path s p, n, pos))
       | Papply(p1, p2) ->
@@ -446,7 +457,7 @@ and modtype_declaration ?(renew=true) s decl  =
    and return resulting merged map. *)
 
 let merge_tbls f m1 m2 =
-  Tbl.fold (fun k d accu -> Tbl.add k (f d) accu) m1 m2
+  Tbl.fold_all (fun k d accu -> Tbl.add k (f d) accu) m1 m2
 
 (* Composition of substitutions:
      apply (compose s1 s2) x = apply s2 (apply s1 x) *)
