@@ -274,16 +274,29 @@ module Sideness = struct
     try Some (TypeMap.find ty !visited)
     with Not_found -> None
 
-  type error =
-    | WrongSideness of
-        { ty : Types.type_expr ;
-          side : t ;
-          scope : t ;
-        }
-  exception Error of error
+  exception Error of {
+      ty : Types.type_expr ;
+      side : t ;
+      scope : t ;
+    }
+  let error_msg ~loc ~ty:_ ~side ~scope =
+    let open Eliom_base in
+    let hint ppf (side, scope) = match side, scope with
+      | Poly, Loc (Client | Server) ->
+          Format.fprintf ppf
+            "@\nHint: Add a sideness annotation `[@@%a]` on the type parameter."
+            Eliom_base.pp scope
+      | _ -> ()
+    in
+    Location.errorf ~loc
+      "In this type definition, the type parameter is \
+       declared on %a side but is used on %a side.%a"
+      (* Printtyp.type_expr ty *)
+      Eliom_base.pp side
+      Eliom_base.pp scope
+      hint (side, scope)
 
-  let fail ~side ~scope ~ty =
-    raise (Error (WrongSideness {ty; side; scope}))
+  let fail ~side ~scope ~ty = raise (Error {ty; side; scope})
 
   (* Simplified copy of Typedecl.compute_variance_rec *)
   let rec check_rec env visited scope ty =
@@ -360,23 +373,27 @@ module Sideness = struct
     | Type_record (ftl, _) ->
         mn @ List.map (fun {Types.ld_type} -> ld_type) ftl
 
-  let check_internal env sides params tys =
-    let scope = Eliom_base.get_side () in
+  let check_internal env loc sides params tys =
     let init_map = List.fold_right2 TypeMap.add params sides TypeMap.empty in
     let visited = ref init_map in
-    List.iter (check_rec env visited scope) tys
+    try
+      List.iter (check_rec env visited Eliom_base.Poly) tys
+    with Error {ty; side; scope} ->
+      raise (Location.Error (error_msg ~loc ~ty ~side ~scope))
 
   let check env decl =
+    let loc = decl.type_loc in
     let sides = of_tydecl decl in
     let tys = gather_tys decl in
-    check_internal env sides decl.type_params tys
+    check_internal env loc sides decl.type_params tys
 
   let check_extension env decl ext =
+    let loc = decl.type_loc in
     let sides = of_tydecl decl in
     let tys =
       gather_tys_variant ext.ext_args ext.ext_ret_type []
     in
-    check_internal env sides ext.ext_type_params tys
+    check_internal env loc sides ext.ext_type_params tys
 
 
   (** Getting the info out of the AST *)
