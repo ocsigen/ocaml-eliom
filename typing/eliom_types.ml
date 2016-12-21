@@ -124,7 +124,7 @@ module Specialize = struct
     let open Eliom_base in
     match idside, scope with
     | Poly, Loc l -> Some l
-    | Poly, Poly -> None
+    | _ , Poly -> None
     | Loc _, _ -> None
 
   let specialization_with copy translate idside x =
