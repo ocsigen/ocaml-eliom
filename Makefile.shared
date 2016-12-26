@@ -59,7 +59,7 @@ PARSING=parsing/location.cmo parsing/longident.cmo \
 
 TYPING=typing/eliom_base.cmo \
   typing/ident.cmo typing/path.cmo \
-  typing/primitive.cmo typing/types.cmo \
+  typing/primitive.cmo typing/types.cmo typing/types_mapper.cmo \
   typing/btype.cmo typing/oprint.cmo \
   typing/subst.cmo typing/predef.cmo \
   typing/eliom_types.cmo \
