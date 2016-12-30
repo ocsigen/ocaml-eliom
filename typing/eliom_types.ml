@@ -127,50 +127,157 @@ module Specialize = struct
     | _ , Poly -> None
     | Loc _, _ -> None
 
-  let specialization_with copy translate idside x =
-    let scope = Eliom_base.get_side () in
-    match test ~scope ~idside with
-    | Some loc ->
-        let x' = copy x in
-        translate loc x' ;
-        x'
-    | None -> x
-
-  let modtype =
-    specialization_with
-      Subst.(modtype identity)
-      Translate.modtype
-
-  let module_declaration =
-    specialization_with
-      Subst.(module_declaration ~renew:false identity)
-      Translate.module_declaration
-
-  let modtype_declaration =
-    specialization_with
-      Subst.(modtype_declaration ~renew:false identity)
-      Translate.modtype_declaration
-
-  let class_declaration =
-    specialization_with
-      Subst.(class_declaration identity)
-      Translate.class_declaration
-
-  let class_type_declaration =
-    specialization_with
-      Subst.(cltype_declaration identity)
-      Translate.class_type_declaration
-
   let copy_ident scope i =
     let idside = Ident.side i in
     match test ~scope ~idside with
     | None -> i (* Keep the same ident, the typechecker uses == *)
-    | Some l -> Ident.with_side (Loc l) i
+    | Some _ when Translate.is_predef i -> i
+    | Some l -> Ident.with_side (Eliom_base.Loc l) i
 
-  let rec copy_path side : Path.t -> Path.t = function
-    | Pident id -> Pident (copy_ident side id)
-    | Pdot(p, s, pos) -> Pdot (copy_path side p, s, pos)
-    | Papply(p1, p2) -> Papply (copy_path side p1, copy_path side p2)
+  class copier side = object (self)
+    inherit Types_mapper.t
+    method! ident = copy_ident side
+    method! type_desc _ = assert false
+
+    (* Simplified from Subst.tyexp.
+       We must be very careful with sharing, abbreviations and
+       a lot of other things, so better just do exactly what the
+       rest of the typecheker do.
+    *)
+    method! type_expr ty =
+      let ty = repr ty in
+      match ty.desc with
+        Tvar _ | Tunivar _ as desc ->
+          if ty.id < 0 then
+            let ty' = newty2 ty.level desc in
+            save_desc ty desc; ty.desc <- Tsubst ty'; ty'
+          else begin (* when adding a module to the environment *)
+            if ty.level < generic_level then
+              ty.level <- min ty.level Btype.generic_level;
+            ty
+          end
+      | Tsubst ty ->
+          self#type_expr ty
+      | _ ->
+          let desc = ty.desc in
+          save_desc ty desc;
+          (* Make a stub *)
+          let ty' = newgenvar () in
+          ty.desc <- Tsubst ty';
+          ty'.desc <-
+            begin match desc with
+            | Tconstr(p, tl, _abbrev) ->
+                Tconstr(self#path p, List.map self#type_expr tl, ref Mnil)
+            | Tpackage(p, n, tl) ->
+                Tpackage(self#path p, n, List.map self#type_expr tl)
+            | Tobject (t1, name) ->
+                Tobject (self#type_expr t1,
+                  ref (match !name with
+                      None -> None
+                    | Some (p, tl) ->
+                        Some (self#path p, List.map self#type_expr tl)))
+            | Tfield (m, k, t1, t2)
+              when ty.level < generic_level && m = dummy_method ->
+                (* not allowed to lower the level of the dummy method *)
+                Tfield (m, k, t1, self#type_expr t2)
+            | Tvariant row ->
+                let row = row_repr row in
+                let more = repr row.row_more in
+                (* We must substitute in a subtle way *)
+                (* Tsubst takes a tuple containing the row var and the variant *)
+                begin match more.desc with
+                  Tsubst {desc = Ttuple [_;ty2]} ->
+                    (* This variant type has been already copied *)
+                    ty.desc <- Tsubst ty2; (* avoid Tlink in the new type *)
+                    Tlink ty2
+                | _ ->
+                    let dup = more.level = generic_level || static_row row ||
+                      match more.desc with Tconstr _ -> true | _ -> false in
+                    (* Various cases for the row variable *)
+                    let more' =
+                      match more.desc with
+                        Tsubst ty -> ty
+                      | Tconstr _ | Tnil -> self#type_expr more
+                      | Tunivar _ | Tvar _ ->
+                          save_desc more more.desc;
+                          if dup && is_Tvar more then newgenty more.desc else more
+                      | _ -> assert false
+                    in
+                    (* Register new type first for recursion *)
+                    more.desc <- Tsubst(newgenty(Ttuple[more';ty']));
+                    (* Return a new copy *)
+                    let row =
+                      copy_row self#type_expr true row (not dup) more' in
+                    match row.row_name with
+                      Some (p, tl) ->
+                        Tvariant {row with row_name = Some (self#path p, tl)}
+                    | None ->
+                        Tvariant row
+                end
+            | Tfield(_label, kind, _t1, t2) when field_kind_repr kind = Fabsent ->
+                Tlink (self#type_expr t2)
+            | _ -> copy_type_desc self#type_expr desc
+            end;
+          ty'
+
+  end
+
+  let copy =
+    let open Eliom_base in
+    let client_copier = new copier (Loc Client) in
+    let server_copier = new copier (Loc Server) in
+    let poly_copier = new copier Poly in
+    function
+    | Loc Client -> client_copier
+    | Loc Server -> server_copier
+    | Poly -> poly_copier
+
+  let specialization_with ?printer met idside x =
+    let scope = Eliom_base.get_side () in
+    match test ~scope ~idside with
+    | Some loc ->
+        begin match printer with None -> () | Some printer ->
+          Format.printf
+            "Copying from side %a to side %a.@."
+            Eliom_base.pp idside Eliom_base.pp scope ;
+          Format.printf "Original version: %a@." printer x ;
+        end ;
+        let x' = met (copy @@ Eliom_base.Loc loc) x in
+        begin match printer with None -> () | Some printer ->
+          Format.printf "New version: %a@.@." printer x' ;
+        end ;
+        x'
+    | None -> x
+
+  let modtype x =
+    specialization_with
+      ~printer:(!printer_modtype)
+      (fun o -> o#module_type)
+      x
+
+  let module_declaration x =
+    specialization_with
+      ~printer:(!printer_module_decl (Ident.create_persistent "Foo"))
+      (fun o -> o#module_declaration)
+      x
+
+  let modtype_declaration x =
+    specialization_with
+      ~printer:(!printer_modtype_decl (Ident.create_persistent "Foo"))
+      (fun o -> o#modtype_declaration)
+      x
+
+  let class_declaration x =
+    specialization_with
+      (fun o -> o#class_declaration)
+      x
+
+  let class_type_declaration x =
+    specialization_with
+      (fun o -> o#class_type_declaration)
+      x
+
+
 
   let ident' scope i =
     if scope = Eliom_base.Poly then i
@@ -180,7 +287,7 @@ module Specialize = struct
 
   let path' scope p =
     if scope = Eliom_base.Poly then p
-    else copy_path scope p
+    else (copy scope)#path p
 
   let path p = path' (Eliom_base.get_side ()) p
 
