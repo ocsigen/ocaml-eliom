@@ -61,7 +61,3 @@ val class_signature: t -> class_signature -> class_signature
 (* Composition of substitutions:
      apply (compose s1 s2) x = apply s2 (apply s1 x) *)
 val compose: t -> t -> t
-
-
-val specialize_path : (Eliom_base.side -> Path.t -> Path.t) ref
-val specialize_modtype : (Eliom_base.side -> Types.module_type -> Types.module_type) ref

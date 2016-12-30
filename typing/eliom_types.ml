@@ -292,8 +292,3 @@ module Specialize = struct
   let path p = path' (Eliom_base.get_side ()) p
 
 end
-
-let () =
-  Subst.specialize_path := Specialize.path' ;
-  Subst.specialize_modtype := Specialize.modtype ;
-  ()

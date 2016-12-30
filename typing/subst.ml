@@ -20,8 +20,16 @@ open Path
 open Types
 open Btype
 
-let specialize_path = ref (fun _ p -> p)
-let specialize_modtype = ref (fun _ p -> p)
+(* ELIOM *)
+(* When we find a ident that should be substituted, we specialize the
+   result according to the scope.
+   In practice, we find the scope by looking at the side of the substituted id
+*)
+module ETS = Eliom_types.Specialize
+let specialize_path = ETS.path'
+let specialize_modtype = ETS.modtype
+let specialize_ident = ETS.ident
+(* /ELIOM *)
 
 module Tbl = Ident
 
@@ -72,9 +80,8 @@ let attrs s x =
 
 let rec module_path s = function
     Pident id as p ->
-      begin try
-        !specialize_path (Ident.side id) @@ Tbl.find_same id s.modules
-      with Not_found -> !specialize_path (Ident.side id) p end
+      begin try specialize_path (Ident.side id) @@ (* ELIOM *)
+        Tbl.find_same id s.modules with Not_found -> p end
   | Pdot(p, n, pos) ->
       Pdot(module_path s p, n, pos)
   | Papply(p1, p2) ->
@@ -84,9 +91,11 @@ let modtype_path s = function
     Pident id as p ->
       begin try
         match Tbl.find_same id s.modtypes with
-          | Mty_ident p -> !specialize_path (Ident.side id) p
+          | Mty_ident p ->
+              specialize_path (Ident.side id) @@ (* ELIOM *)
+              p
           | _ -> fatal_error "Subst.modtype_path"
-      with Not_found -> !specialize_path (Ident.side id) p end
+      with Not_found -> p end
   | Pdot(p, n, pos) ->
       Pdot(module_path s p, n, pos)
   | Papply(p1, p2) ->
@@ -95,8 +104,8 @@ let modtype_path s = function
 let type_path s = function
     Pident id as p ->
       begin try
-        !specialize_path (Ident.side id) @@ Tbl.find_same id s.types
-      with Not_found -> !specialize_path (Ident.side id) p end
+        specialize_path (Ident.side id) @@ (* ELIOM *)
+        Tbl.find_same id s.types with Not_found -> p end
   | Pdot(p, n, pos) ->
       Pdot(module_path s p, n, pos)
   | Papply(p1, p2) ->
@@ -223,7 +232,7 @@ let type_expr s ty =
 
 let label_declaration s l =
   {
-    ld_id = l.ld_id;
+    ld_id = l.ld_id; (* ELIOM TODO: Should we call specialize_ident ? *)
     ld_mutable = l.ld_mutable;
     ld_type = typexp s l.ld_type;
     ld_loc = loc s l.ld_loc;
@@ -373,12 +382,13 @@ let rec rename_bound_idents s idents = function
       rename_bound_idents s (id' :: idents) sg
 
 let rec modtype ?(renew=true) s = function
-    Mty_ident p as mty ->
+    Mty_ident p as mty->
       begin match p with
         Pident id ->
           begin try
-            !specialize_modtype (Ident.side id) @@ Tbl.find_same id s.modtypes
-          with Not_found -> !specialize_modtype (Ident.side id) mty end
+            specialize_modtype (Ident.side id) @@ Tbl.find_same id s.modtypes
+          with Not_found ->
+            mty end
       | Pdot(p, n, pos) ->
           Mty_ident(Pdot(module_path s p, n, pos))
       | Papply(p1, p2) ->
@@ -387,7 +397,7 @@ let rec modtype ?(renew=true) s = function
   | Mty_signature sg ->
       Mty_signature(signature ~renew s sg)
   | Mty_functor(id, arg, res) ->
-      let id' = if renew then Ident.rename id else Ident.with_side (Eliom_base.get_side ()) id in
+      let id' = if renew then Ident.rename id else id in
       Mty_functor(id', may_map (modtype ~renew s) arg,
                        modtype ~renew (add_module id (Pident id') s) res)
   | Mty_alias p ->
@@ -422,22 +432,21 @@ and signature_component s comp newid =
       Sig_class_type(newid, cltype_declaration s d, rs)
 
 and signature_component_no_renew s comp =
-  let f = Ident.with_side (Eliom_base.get_side ()) in
   match comp with
     Sig_value(id, d) ->
-      Sig_value(f id, value_description s d)
+      Sig_value(specialize_ident id, value_description s d)
   | Sig_type(id, d, rs) ->
-      Sig_type(f id, type_declaration s d, rs)
+      Sig_type(specialize_ident id, type_declaration s d, rs)
   | Sig_typext(id, ext, es) ->
-      Sig_typext(f id, extension_constructor s ext, es)
+      Sig_typext(specialize_ident id, extension_constructor s ext, es)
   | Sig_module(id, d, rs) ->
-      Sig_module(f id, module_declaration ~renew:false s d, rs)
+      Sig_module(specialize_ident id, module_declaration ~renew:false s d, rs)
   | Sig_modtype(id, d) ->
-      Sig_modtype(f id, modtype_declaration ~renew:false s d)
+      Sig_modtype(specialize_ident id, modtype_declaration ~renew:false s d)
   | Sig_class(id, d, rs) ->
-      Sig_class(f id, class_declaration s d, rs)
+      Sig_class(specialize_ident id, class_declaration s d, rs)
   | Sig_class_type(id, d, rs) ->
-      Sig_class_type(f id, cltype_declaration s d, rs)
+      Sig_class_type(specialize_ident id, cltype_declaration s d, rs)
 
 and module_declaration ?(renew=true) s decl =
   {
