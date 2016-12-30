@@ -1327,6 +1327,28 @@ let add_gadt_instance_chain env lv t =
   add_instance t
   (* Format.eprintf "@." *)
 
+(* ELIOM *)
+(* try to find the side of a module *)
+let rec find_module_side path env =
+  let open Eliom_base in
+  match path with
+    Pident id -> Some (Ident.side id)
+  | Pdot(p, s, pos) ->
+      begin try match get_components (find_module_descr p env) with
+          Structure_comps c ->
+            let id = STbl.find_ident s c.comp_modules in
+            Some (Ident.side id)
+        | Functor_comps f -> None
+      with _ -> None
+      end
+  | Papply(p1, p2) ->
+      begin match find_module_side p1 env, find_module_side p2 env with
+      | Some (Loc _ as s), _
+      | _, Some (Loc _ as s) -> Some s
+      | _, _  -> None (* need to look at the module type to know *)
+      end
+(* /ELIOM *)
+
 (* Expand manifest module type names at the top of the given module type *)
 
 let rec scrape_alias env ?path mty =
@@ -1346,8 +1368,16 @@ let rec scrape_alias env ?path mty =
         mty
       end
   | mty, Some path ->
+      (* ELIOM *)
+      let side = match find_module_side path env with
+        | Some s -> s | None -> Eliom_base.Poly
+      in
+      let mty = ETS.modtype side mty in
+      (* /ELIOM *)
       !strengthen env mty path
-  | _ -> mty
+  | _ ->
+      Eliom_types.Specialize.modtype Eliom_base.Poly @@ (*ELIOM*)
+      mty
 
 let scrape_alias env mty = scrape_alias env mty
 
@@ -2145,25 +2175,3 @@ let () =
       | Error err -> Some (Location.error_of_printer_file report_error err)
       | _ -> None
     )
-
-(* ELIOM *)
-(* try to find the side of a module *)
-let rec find_module_side path env =
-  let open Eliom_base in
-  match path with
-    Pident id -> Some (Ident.side id)
-  | Pdot(p, s, pos) ->
-      begin try match get_components (find_module_descr p env) with
-          Structure_comps c ->
-            let id = STbl.find_ident s c.comp_modules in
-            Some (Ident.side id)
-        | Functor_comps f -> None
-      with _ -> None
-      end
-  | Papply(p1, p2) ->
-      begin match find_module_side p1 env, find_module_side p2 env with
-      | Some (Loc _ as s), _
-      | _, Some (Loc _ as s) -> Some s
-      | _, _  -> None (* need to look at the module type to know *)
-      end
-(* /ELIOM *)
