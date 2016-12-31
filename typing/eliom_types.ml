@@ -60,26 +60,6 @@ module Translate = struct
     let it = get side in
     it.it_signature it
 
-  let modtype side =
-    let it = get side in
-    it.it_module_type it
-
-  let module_declaration side =
-    let it = get side in
-    it.it_module_declaration it
-
-  let modtype_declaration side =
-    let it = get side in
-    it.it_modtype_declaration it
-
-  let class_declaration side =
-    let it = get side in
-    it.it_class_declaration it
-
-  let class_type_declaration side =
-    let it = get side in
-    it.it_class_type_declaration it
-
 end
 
 let translate = Translate.signature
