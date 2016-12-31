@@ -469,7 +469,7 @@ let read_pers_struct check modname base_side filename =
                              (Mty_signature sign)
   in
   let ps = { ps_name = name;
-             ps_sig = lazy (Subst.signature Subst.identity sign);
+             ps_sig = lazy (Eliom_base.in_side side @@ fun () -> Subst.signature Subst.identity sign);
              ps_comps = comps;
              ps_crcs = crcs;
              ps_filename = filename;
@@ -1479,6 +1479,11 @@ let rec components_of_module ~deprecated env sub path mty =
   }
 
 and components_of_module_maker (env, sub, path, mty) =
+  (* ELIOM *)
+  (match find_module_side path env with
+  | Some side -> Eliom_base.in_side side
+  | None -> fun f -> f ()) @@ fun () ->
+  (* /ELIOM *)
   (match scrape_alias env mty with
     Mty_signature sg ->
       let c =
@@ -1494,6 +1499,7 @@ and components_of_module_maker (env, sub, path, mty) =
       List.iter2 (fun item path ->
         match item with
           Sig_value(id, decl) ->
+            Eliom_base.in_side (Ident.side id) @@ fun () ->
             let decl' = Subst.value_description sub decl in
             c.comp_values <-
               STbl.add id (decl', !pos) c.comp_values;
@@ -1501,6 +1507,7 @@ and components_of_module_maker (env, sub, path, mty) =
               Val_prim _ -> () | _ -> incr pos
             end
         | Sig_type(id, decl, _) ->
+            Eliom_base.in_side (Ident.side id) @@ fun () ->
             let decl' = Subst.type_declaration sub decl in
             let constructors =
               List.map snd (Datarepr.constructors_of_type path decl') in
@@ -1528,12 +1535,14 @@ and components_of_module_maker (env, sub, path, mty) =
               labels;
             env := store_type_infos None id (Pident id) decl !env !env
         | Sig_typext(id, ext, _) ->
+            Eliom_base.in_side (Ident.side id) @@ fun () ->
             let ext' = Subst.extension_constructor sub ext in
             let descr = Datarepr.extension_descr path ext' in
             c.comp_constrs <-
               add_to_tbl id (descr, !pos) c.comp_constrs;
             incr pos
         | Sig_module(id, md, _) ->
+            Eliom_base.in_side (Ident.side id) @@ fun () ->
             let mty = md.md_type in
             let mty' = EnvLazy.create (sub, mty) in
             c.comp_modules <-
@@ -1547,22 +1556,26 @@ and components_of_module_maker (env, sub, path, mty) =
             env := store_module None id (Pident id) md !env !env;
             incr pos
         | Sig_modtype(id, decl) ->
+            Eliom_base.in_side (Ident.side id) @@ fun () ->
             let decl' = Subst.modtype_declaration sub decl in
             c.comp_modtypes <-
               STbl.add id (decl', nopos) c.comp_modtypes;
             env := store_modtype None id (Pident id) decl !env !env
         | Sig_class(id, decl, _) ->
+            Eliom_base.in_side (Ident.side id) @@ fun () ->
             let decl' = Subst.class_declaration sub decl in
             c.comp_classes <-
               STbl.add id (decl', !pos) c.comp_classes;
             incr pos
         | Sig_class_type(id, decl, _) ->
+            Eliom_base.in_side (Ident.side id) @@ fun () ->
             let decl' = Subst.cltype_declaration sub decl in
             c.comp_cltypes <-
               STbl.add id (decl', !pos) c.comp_cltypes)
         sg pl;
         Structure_comps c
   | Mty_functor(param, ty_arg, ty_res) ->
+      Eliom_base.in_side (Ident.side param) @@ fun () ->
         Functor_comps {
           fcomp_param = param;
           (* fcomp_arg and fcomp_res must be prefixed eagerly, because
