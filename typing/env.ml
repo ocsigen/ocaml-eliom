@@ -1804,7 +1804,7 @@ let add_local_constraint id info elv env =
 (* Insertion of bindings by name *)
 
 let enter store_fun name data env =
-  let id = Ident.create name in (id, store_fun None id (Pident id) data env env)
+  let id = Ident.create name in (ETS.ident id, store_fun None id (Pident id) data env env)
 
 let enter_value ?check = enter (store_value ?check)
 and enter_type = enter (store_type ~check:true)
@@ -1819,7 +1819,7 @@ and enter_cltype = enter store_cltype
 
 let enter_module ?arg s mty env =
   let id = Ident.create s in
-  (id, enter_module_declaration ?arg id (md mty) env)
+  (ETS.ident id, enter_module_declaration ?arg id (md mty) env)
 
 (* Insertion of all components of a signature *)
 
