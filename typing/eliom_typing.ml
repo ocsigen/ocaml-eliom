@@ -91,7 +91,7 @@ module Error_msg = struct
     let mside = Eliom_base.mirror side in
     let aux name path acc = match path with
       | Some path ->
-          let pside = Ident.side @@ Path.head path in
+          let pside = Ident.side @@ Path.head path in (* ELIOM TODO: This is incorrect, as it only gives the side of the first module. *)
           if Eliom_base.conform ~scope:pside ~id:mside && name = s
           then raise (FoundIn pside)
           else acc
