@@ -103,12 +103,6 @@ let persistent i = (i.stamp = 0)
 
 let equal i1 i2 = i1.name = i2.name
 
-let same i1 i2 = i1 = i2
-  (* Possibly more efficient version (with a real compiler, at least):
-       if i1.stamp <> 0
-       then i1.stamp = i2.stamp
-       else i2.stamp = 0 && i1.name = i2.name *)
-
 let compare i1 i2 = Pervasives.compare i1 i2
 
 let binding_time i = i.stamp
@@ -143,6 +137,24 @@ let print ppf i =
   | 0 -> fprintf ppf "%s!%s" i.name (show_side i)
   | -1 -> fprintf ppf "%s#%s" i.name (show_side i)
   | n -> fprintf ppf "%s/%i%s%s" i.name n (if global i then "g" else "") (show_side i)
+
+let not_predef i = i.stamp <= 0 || i.stamp > 35
+
+let same i1 i2 =
+  let b =
+    if i1.stamp <> 0
+    then i1.stamp = i2.stamp
+    else i2.stamp = 0 && i1.name = i2.name
+  in
+  (* Emit a warning if same but not equal.
+     This means we are comparing the same ident across different sides.
+  *)
+  begin if b && i1 <> i2 then
+      Format.eprintf "Warning: Ident.same on different sides in %a scope: %a %a@."
+        Eliom_base.pp (Eliom_base.get_side ())
+        print i1  print i2
+  end ;
+  b
 
 type 'a tbl =
     Empty
