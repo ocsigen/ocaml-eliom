@@ -46,7 +46,7 @@ let check_consistency file_name unit crc =
   begin try
     List.iter
       (fun (name, crco) ->
-        let elt = Eliom_base.(SideString.make name (get_mode_as_side())) in
+        let elt = name, Eliom_base.get_mode_as_side() in
         interfaces := elt :: !interfaces;
         match crco with
           None -> ()
@@ -61,7 +61,7 @@ let check_consistency file_name unit crc =
   begin try
     List.iter
       (fun (name, crco) ->
-        let elt = Eliom_base.(SideString.make name (get_mode_as_side())) in
+        let elt = name, Eliom_base.get_mode_as_side() in
         implementations := elt :: !implementations;
         match crco with
             None ->
@@ -78,7 +78,7 @@ let check_consistency file_name unit crc =
     raise (Error(Multiple_definition(unit.ui_name, file_name, source)))
   with Not_found -> ()
   end;
-  let elt = Eliom_base.(SideString.make unit.ui_name (get_mode_as_side())) in
+  let elt = unit.ui_name, Eliom_base.get_mode_as_side() in
   implementations := elt :: !implementations;
   Consistbl.set crc_implementations elt crc file_name;
   implementations_defined :=

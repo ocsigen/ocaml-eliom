@@ -116,7 +116,7 @@ let output_cmi filename oc cmi =
     | Loc l  ->
         {cmi with cmi_flags = Eliom_loc l :: cmi.cmi_flags}
   in
-  let name = Eliom_base.SideString.(to_string @@ make cmi.cmi_name side) in
+  let name = Eliom_base.SideString.(to_string @@ (cmi.cmi_name, side)) in
   (* /ELIOM *)
   output_string oc cmi_magic_number;
   output_value oc (cmi.cmi_name, cmi.cmi_sign);

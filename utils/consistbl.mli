@@ -16,7 +16,8 @@
 (* Consistency tables: for checking consistency of module CRCs *)
 
 (* ELIOM *)
-type side = Poly | Server | Client
+type loc = Client | Server
+type side = Poly | Loc of loc
 type elt = string * side
 (* /ELIOM *)
 

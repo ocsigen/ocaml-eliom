@@ -364,17 +364,22 @@ module PersTbl = struct
     let hash = Hashtbl.hash
   end
   include Hashtbl.Make(M)
-  let of_ident i =
-    Eliom_base.SideString.make (Ident.name i) (Ident.side i)
-  let find tbl i =
-    let id, loc = of_ident i in
+  let of_ident i = (Ident.name i, Ident.side i)
+  let find tbl id loc =
     if loc <> Consistbl.Poly && mem tbl (id, loc) then
       find tbl (id, loc)
     else
       find tbl (id, Consistbl.Poly)
-        
-  let add tbl i = add tbl (of_ident i)
-  let mem tbl i = mem tbl (of_ident i)
+  let add tbl id loc v = add tbl (id, loc) v
+  let mem tbl id loc =
+    if loc <> Consistbl.Poly && mem tbl (id, loc) then
+      mem tbl (id, loc)
+    else
+      mem tbl (id, Consistbl.Poly)
+  
+  let find_ident tbl i = find tbl (Ident.name i) (Ident.side i)
+  let add_ident tbl i = add tbl (Ident.name i) (Ident.side i)
+  let mem_ident tbl i = mem tbl (Ident.name i) (Ident.side i)
 end
 
 let persistent_structures
@@ -412,16 +417,15 @@ let check_consistency ps =
               Consistbl.check crc_units name crc ps.ps_filename)
       ps.ps_crcs;
   with Consistbl.Inconsistency(name, source, auth) ->
-    let name, side = Eliom_base.SideString.get name in
+    let name, side = name in
     error (Inconsistent_import(name, side, auth, source))
 
 (* Reading persistent structures from .cmi files *)
 
 let save_pers_struct ~side crc ps =
   let modname = ps.ps_name in
-  let id = Ident.create_persistent ~side modname in (* ELIOM *)
-  PersTbl.add persistent_structures id (Some ps);
-  let elt = Eliom_base.SideString.make modname side in (* ELIOM *)
+  let elt = modname, side in (* ELIOM *)
+  PersTbl.add persistent_structures modname side (Some ps);
   List.iter
     (function
         | Rectypes -> ()
@@ -432,17 +436,17 @@ let save_pers_struct ~side crc ps =
   Consistbl.set crc_units elt crc ps.ps_filename;
   add_import elt
 
-let read_pers_struct check id filename =
-  let modname = Ident.name id in (* ELIOM *)
-  let cmi, side(*ELIOM*) = read_cmi filename in
+let read_pers_struct check modname base_side filename =
+  let cmi, side(*ELIOM*) = Eliom_base.in_side base_side @@ fun () -> read_cmi filename in
+  Eliom_base.in_side side @@ fun () ->
   (* ELIOM *)
-  if side <> Ident.side id then begin
-    Format.eprintf "Changing side of %a to %a.@."
-      Ident.print id Eliom_base.pp side ;
-    Ident.change_side side id ;
-    Format.eprintf "Now is %a.@." Ident.print id ;
-  end ;
-  let elt = Eliom_base.SideString.make modname side in
+  let id =
+    if side <> base_side then
+      Format.eprintf "Loading %s on side %a.@."
+        modname Eliom_base.pp side ;
+    Ident.create_persistent ~side modname
+  in
+  let elt = modname, side in
   (* /ELIOM *)
   add_import elt ;
   let name = cmi.cmi_name in
@@ -483,14 +487,14 @@ let read_pers_struct check id filename =
         | Opaque -> add_imported_opaque modname)
     ps.ps_flags;
   if check then check_consistency ps;
-  PersTbl.add persistent_structures id (Some ps);
-  ps
+  PersTbl.add_ident persistent_structures id (Some ps);
+  id, ps
 
-let find_pers_struct check id =
-  let name = Ident.name id in
+let find_pers_struct check name =
+  let side = Eliom_base.get_side () in
   if name = "*predef*" then raise Not_found;
-  match PersTbl.find persistent_structures id with
-  | Some ps -> ps
+  match PersTbl.find persistent_structures name side with
+  | Some ps -> Ident.create_persistent ~side name, ps
   | None -> raise Not_found
   | exception Not_found ->
       (* ELIOM *)
@@ -498,18 +502,15 @@ let find_pers_struct check id =
         try
           Eliom_base.find_in_load_path name ~ext:".cmi"
         with Not_found ->
-          PersTbl.add persistent_structures id None;
+          PersTbl.add persistent_structures name side None;
           raise Not_found
       in
-
-      Eliom_base.in_side side @@ fun () ->
-      read_pers_struct check id filename
+      read_pers_struct check name side filename
 
 (* Emits a warning if there is no valid cmi for name *)
-let check_pers_struct id =
-  let name = Ident.name id in
+let check_pers_struct name =
   try
-    ignore (find_pers_struct false id)
+    ignore (find_pers_struct false name)
   with
   | Not_found ->
       let warn = Warnings.No_cmi_file(name, None) in
@@ -544,14 +545,12 @@ let find_pers_struct name =
   find_pers_struct true name
 
 let check_pers_struct name =
-  if not (PersTbl.mem persistent_structures name) then begin
+  let side = Eliom_base.get_side () in (* ELIOM *)
+  if not (PersTbl.mem persistent_structures name side) then begin
     (* PR#6843: record the weak dependency ([add_import]) regardless of
        whether the check suceeds, to help make builds more
        deterministic. *)
-    let elt =
-      Eliom_base.SideString.make (Ident.name name) (Ident.side name)
-    in
-    add_import elt ;
+    add_import (name, side) ;
     if (Warnings.is_active (Warnings.No_cmi_file("", None))) then
       !add_delayed_check_forward
         (fun () -> check_pers_struct name)
@@ -597,7 +596,7 @@ let rec find_module_descr path env =
       with Not_found ->
         if Ident.persistent id && not (Ident.name id = !current_unit)
         then
-          (find_pers_struct id(* ELIOM *)).ps_comps
+          (snd @@ find_pers_struct (Ident.name id)).ps_comps
         else raise Not_found
       end
   | Pdot(p, s, pos) ->
@@ -698,13 +697,13 @@ let find_type_descrs p env =
 let find_module ~alias path env =
   match path with
     Pident id ->
-      ETS.module_declaration (Ident.side id)
       begin try
         let (p, data) = EnvTbl.find_same id env.modules
-        in data
+        in ETS.module_declaration (Ident.side id) data
       with Not_found ->
         if Ident.persistent id && not (Ident.name id = !current_unit) then
-          let ps = find_pers_struct id(* ELIOM *) in
+          let id, ps = find_pers_struct (Ident.name id) in
+          ETS.module_declaration (Ident.side id) @@
           md (Mty_signature(Lazy.force ps.ps_sig))
         else raise Not_found
       end
@@ -853,11 +852,7 @@ let rec lookup_module_descr_aux ?loc lid env =
         EnvTbl.find_name s env.components
       with Not_found ->
         if s = !current_unit then raise Not_found;
-        (* ELIOM *)
-        (* We create the id and pass it to find_pers_struct to find its side
-           Before returning it. *)
-        let id = Ident.create_persistent s in
-        let ps = find_pers_struct id in
+        let id, ps = find_pers_struct s in
         (Pident id, ps.ps_comps)
       end
   | Ldot(l, s) ->
@@ -903,17 +898,13 @@ and lookup_module ~load ?loc lid env : Path.t =
         p
       with Not_found ->
         if s = !current_unit then raise Not_found;
-        (* ELIOM *)
-        (* We create the id and pass it to find_pers_struct to find its side
-           Before returning it. *)
-        let id = Ident.create_persistent s in
-        let p = Pident id in
-        if !Clflags.transparent_modules && not load then check_pers_struct id
+        if !Clflags.transparent_modules && not load then
+          (check_pers_struct s; Pident(Ident.create_persistent s))
         else begin
-          let ps = find_pers_struct id in
-          report_deprecated ?loc p ps.ps_comps.deprecated
-        end;
-        p
+          let id, ps = find_pers_struct s in
+          report_deprecated ?loc (Pident id) ps.ps_comps.deprecated ;
+          Pident id
+        end
       end
   | Ldot(l, s) ->
       let (p, descr) = lookup_module_descr ?loc l env in
@@ -1187,7 +1178,7 @@ let rec scrape_alias_for_visit env mty =
   match mty with
   | Mty_alias (Pident id)
     when Ident.persistent id
-      && not (PersTbl.mem persistent_structures id) -> false
+      && not (PersTbl.mem_ident persistent_structures id) -> false
   | Mty_alias path -> (* PR#6600: find_module may raise Not_found *)
       begin try scrape_alias_for_visit env (find_module path env).md_type
       with Not_found -> false
@@ -1220,8 +1211,8 @@ let iter_env proj1 proj2 f env () =
     (fun id pso ->
       match pso with None -> ()
       | Some ps ->
-          let id, side = Eliom_base.SideString.get id in
-          let id = Pident (Ident.create_persistent ~side id) in
+          let name, side = id in (* ELIOM *)
+          let id = Pident (Ident.create_persistent ~side name) in
           iter_components id id ps.ps_comps)
     persistent_structures;
   Ident.iter
@@ -1881,8 +1872,7 @@ let open_signature slot root sg env0 =
 (* Open a signature from a file *)
 
 let open_pers_signature name env =
-  let id = Ident.create_persistent name in
-  let ps = find_pers_struct id in
+  let id, ps = find_pers_struct name in
   open_signature None (Pident id)
     (Lazy.force ps.ps_sig) env
 
@@ -1921,18 +1911,16 @@ let open_signature ?(loc = Location.none) ?(toplevel = false) ovf root sg env =
 (* Read a signature from a file *)
 
 let read_signature modname filename =
-  let id = Ident.create_persistent modname in
-  let ps = read_pers_struct id filename in
+  let id, ps = read_pers_struct modname (Eliom_base.get_mode_as_side()) filename in
   id, Lazy.force ps.ps_sig
 
 (* Return the CRC of the interface of the given compilation unit *)
 
 let crc_of_unit name =
-  let id = Ident.create_persistent name in
-  let ps = find_pers_struct id in
+  let id, ps = find_pers_struct name in
   let crco =
     try
-      let elt = Eliom_base.SideString.make name (Ident.side id) in (* ELIOM *)
+      let elt = name, Ident.side id in (* ELIOM *)
       List.assoc elt ps.ps_crcs
     with Not_found ->
       assert false
@@ -1974,7 +1962,7 @@ let save_signature_with_imports ~deprecated sg modname filename imports =
         imports
     in
     let side = Eliom_base.get_mode_as_side () in
-    let elt = Eliom_base.SideString.make modname side in
+    let elt = modname, side in
     (* /ELIOM *)
     let cmi = {
       cmi_name = modname;
@@ -2061,8 +2049,8 @@ let fold_modules f lid env acc =
           match ps with
               None -> acc
             | Some ps ->
-              let id, side = Eliom_base.SideString.get id in
-              f id (Pident (Ident.create_persistent ~side id))
+              let name, side = id in
+              f name (Pident (Ident.create_persistent ~side name))
                      (md (Mty_signature (Lazy.force ps.ps_sig))) acc)
         persistent_structures
         acc

@@ -1,7 +1,7 @@
 [@@@ocaml.warning "+a-4-9-40-42"]
 
 (** Possible locations *)
-type loc =
+type loc = Consistbl.loc =
   | Client
   | Server
 
@@ -18,9 +18,9 @@ val mode_of_string : string -> mode
 (** Side utilities. *)
 
 (** Some code is either polymorphic on side, or at a specific location. *)
-type side =
-  | Loc of loc
+type side = Consistbl.side =
   | Poly
+  | Loc of loc
 
 val get_mode_as_side : unit -> side
 
@@ -32,9 +32,6 @@ module SideString : sig
   val of_string : string -> t
 
   val compare : t -> t -> int
-
-  val make : string -> side -> t
-  val get: t -> string * side
 end
 
 (** Allow to replace StringSet when we want side annotations.

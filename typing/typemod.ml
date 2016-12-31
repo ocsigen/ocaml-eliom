@@ -440,7 +440,7 @@ let check_recmod_typedecls env sdecls decls =
 module SideSet = Eliom_base.SideSet
 
 let check cl loc set_ref name side(* ELIOM *) =
-  let elt = Eliom_base.SideString.make name side in
+  let elt = name, side in
   if SideSet.mem elt !set_ref
   then raise(Error(loc, Env.empty, Repeated_name(cl, name)))
   else set_ref := SideSet.add elt !set_ref
@@ -491,9 +491,7 @@ let simplify_signature sg =
     | [] -> [], SideSet.empty
     | (Sig_value(id, descr) as component) :: sg ->
         let (sg, val_names) as k = aux sg in
-        let id_key =
-          Eliom_base.SideString.make (Ident.name id) (Ident.side id)
-        in
+        let id_key = (Ident.name id, Ident.side id) in
         if SideSet.mem id_key val_names then k
         else (component :: sg, SideSet.add id_key val_names)
     | component :: sg ->
@@ -1739,8 +1737,7 @@ let package_units initial_env objfiles cmifile modulename =
   end else begin
     (* Determine imports *)
     let unit_names =
-      List.map (fun (id,_) ->
-        Eliom_base.SideString.make (Ident.name id) (Ident.side id)) units in
+      List.map (fun (id,_) -> Ident.name id, Ident.side id) units in
     let imports =
       List.filter
         (fun (name, crc) -> not (List.mem name unit_names))

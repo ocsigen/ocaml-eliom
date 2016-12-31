@@ -1,7 +1,7 @@
 [@@@ocaml.warning "+a-4-9-40-42"]
 open Parsetree
 
-type loc =
+type loc = Consistbl.loc =
   | Client
   | Server
 
@@ -24,9 +24,9 @@ let mode_of_string = function
   | "eliom" -> Eliom
   | s -> raise (Arg.Bad ("Invalid argument for -side: "^s))
 
-type side =
-  | Loc of loc
+type side = Consistbl.side =
   | Poly
+  | Loc of loc
 
 let side = ref Poly
 
@@ -77,27 +77,17 @@ module SideString = struct
 
   type t = Consistbl.elt
 
-  let consistbl_of_side : side -> Consistbl.side = function
-    | Loc Client -> Client
-    | Loc Server -> Server
-    | Poly -> Poly
-
-  let side_of_consistbl : Consistbl.side -> side = function
-    | Client -> Loc Client
-    | Server -> Loc Server
-    | Poly -> Poly
-
   let sep = '@'
   let to_string (name,side) =
     match side with
     | Consistbl.Poly -> name
     | _ as side ->
-        Format.asprintf "%s%c%a" name sep pp (side_of_consistbl side)
+        Format.asprintf "%s%c%a" name sep pp side
 
   let of_string s =
     if String.contains s sep then
       let name, side = Misc.cut_at s sep in
-      name, (consistbl_of_side @@ of_string side)
+      name, (of_string side)
     else
       s, Consistbl.Poly
 
@@ -106,9 +96,6 @@ module SideString = struct
     | _, _ when s1 = s2 -> compare name1 name2
     | Consistbl.Poly, _ | _, Consistbl.Poly -> compare name1 name2
     | _ -> compare s1 s2
-
-  let get (s, side) = (s, side_of_consistbl side)
-  let make s side = (s, consistbl_of_side side)
 
 end
 
