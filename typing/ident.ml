@@ -149,7 +149,7 @@ let same i1 i2 =
   (* Emit a warning if same but not equal.
      This means we are comparing the same ident across different sides.
   *)
-  begin if b && i1 <> i2 then
+  begin if b && !Clflags.verbose && i1 <> i2 then
       Format.eprintf "Warning: Ident.same on different sides in %a scope: %a %a@."
         Eliom_base.pp (Eliom_base.get_side ())
         print i1  print i2

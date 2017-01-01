@@ -134,7 +134,7 @@ let eliom_wrap ~frontend ~client ~server info =
   in
   let backend _info (ty,_) =
     let {Eliom_emit. client = c ; server = s } = Eliom_emit.untype ty in
-    print c info ".client" ; print s info ".server" ;
+    if !Clflags.verbose then (print c info ".client" ; print s info ".server") ;
     server s ;
     client c ;
   in
