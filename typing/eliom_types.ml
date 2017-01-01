@@ -124,7 +124,7 @@ module Specialize = struct
        a lot of other things, so better just do exactly what the
        rest of the typecheker do.
     *)
-    method! type_expr ty =
+    method tyexp ty =
       let ty = repr ty in
       match ty.desc with
         Tvar _ | Tunivar _ as desc ->
@@ -137,7 +137,7 @@ module Specialize = struct
             ty
           end
       | Tsubst ty ->
-          self#type_expr ty
+          self#tyexp ty
       | _ ->
           let desc = ty.desc in
           save_desc ty desc;
@@ -147,19 +147,19 @@ module Specialize = struct
           ty'.desc <-
             begin match desc with
             | Tconstr(p, tl, _abbrev) ->
-                Tconstr(self#path p, List.map self#type_expr tl, ref Mnil)
+                Tconstr(self#path p, List.map self#tyexp tl, ref Mnil)
             | Tpackage(p, n, tl) ->
-                Tpackage(self#path p, n, List.map self#type_expr tl)
+                Tpackage(self#path p, n, List.map self#tyexp tl)
             | Tobject (t1, name) ->
-                Tobject (self#type_expr t1,
+                Tobject (self#tyexp t1,
                   ref (match !name with
                       None -> None
                     | Some (p, tl) ->
-                        Some (self#path p, List.map self#type_expr tl)))
+                        Some (self#path p, List.map self#tyexp tl)))
             | Tfield (m, k, t1, t2)
               when ty.level < generic_level && m = dummy_method ->
                 (* not allowed to lower the level of the dummy method *)
-                Tfield (m, k, t1, self#type_expr t2)
+                Tfield (m, k, t1, self#tyexp t2)
             | Tvariant row ->
                 let row = row_repr row in
                 let more = repr row.row_more in
@@ -177,7 +177,7 @@ module Specialize = struct
                     let more' =
                       match more.desc with
                         Tsubst ty -> ty
-                      | Tconstr _ | Tnil -> self#type_expr more
+                      | Tconstr _ | Tnil -> self#tyexp more
                       | Tunivar _ | Tvar _ ->
                           save_desc more more.desc;
                           if dup && is_Tvar more then newgenty more.desc else more
@@ -187,7 +187,7 @@ module Specialize = struct
                     more.desc <- Tsubst(newgenty(Ttuple[more';ty']));
                     (* Return a new copy *)
                     let row =
-                      copy_row self#type_expr true row (not dup) more' in
+                      copy_row self#tyexp true row (not dup) more' in
                     match row.row_name with
                       Some (p, tl) ->
                         Tvariant {row with row_name = Some (self#path p, tl)}
@@ -195,11 +195,15 @@ module Specialize = struct
                         Tvariant row
                 end
             | Tfield(_label, kind, _t1, t2) when field_kind_repr kind = Fabsent ->
-                Tlink (self#type_expr t2)
-            | _ -> copy_type_desc self#type_expr desc
+                Tlink (self#tyexp t2)
+            | _ -> copy_type_desc self#tyexp desc
             end;
           ty'
 
+    method! type_expr ty =
+      let ty' = self#tyexp ty in
+      cleanup_types ();
+      ty'
   end
 
   let copy =
