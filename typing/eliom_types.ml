@@ -95,7 +95,7 @@ let is_mixed s = global_side s = `Mixed
 *)
 module Specialize = struct
 
-  type 'a t = Eliom_base.side -> 'a -> 'a
+  type 'a t = ?idside:Eliom_base.side -> 'a -> 'a
 
   (** Test if we should specialize and return the
       location to specialize to if appropriate.
@@ -216,7 +216,7 @@ module Specialize = struct
     | Loc Server -> server_copier
     | Poly -> poly_copier
 
-  let specialization_with ?printer met idside x =
+  let specialization_with ?printer met ?(idside=Eliom_base.Poly) x =
     let scope = Eliom_base.get_side () in
     match test ~scope ~idside with
     | Some loc ->
@@ -233,33 +233,33 @@ module Specialize = struct
         x'
     | None -> x
 
-  let modtype x =
+  let modtype ?idside x =
     specialization_with
       ~printer:(!printer_modtype)
       (fun o -> o#module_type)
-      x
+      ?idside x
 
-  let module_declaration x =
+  let module_declaration ?idside x =
     specialization_with
       ~printer:(!printer_module_decl (Ident.create_persistent "Foo"))
       (fun o -> o#module_declaration)
-      x
+      ?idside x
 
-  let modtype_declaration x =
+  let modtype_declaration ?idside x =
     specialization_with
       ~printer:(!printer_modtype_decl (Ident.create_persistent "Foo"))
       (fun o -> o#modtype_declaration)
-      x
+      ?idside x
 
-  let class_declaration x =
+  let class_declaration ?idside x =
     specialization_with
       (fun o -> o#class_declaration)
-      x
+      ?idside x
 
-  let class_type_declaration x =
+  let class_type_declaration ?idside x =
     specialization_with
       (fun o -> o#class_type_declaration)
-      x
+      ?idside x
 
 
 
@@ -269,10 +269,10 @@ module Specialize = struct
 
   let ident i = ident' (Eliom_base.get_side ()) i
 
-  let path' scope p =
+  let path' ~scope p =
     if scope = Eliom_base.Poly then p
     else (copy scope)#path p
 
-  let path p = path' (Eliom_base.get_side ()) p
+  let path p = path' ~scope:(Eliom_base.get_side ()) p
 
 end

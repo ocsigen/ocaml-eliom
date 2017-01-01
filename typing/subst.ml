@@ -80,7 +80,7 @@ let attrs s x =
 
 let rec module_path s = function
     Pident id as p ->
-      begin try specialize_path (Ident.side id) @@ (* ELIOM *)
+      begin try specialize_path ~scope:(Ident.side id) @@ (* ELIOM *)
         Tbl.find_same id s.modules with Not_found -> p end
   | Pdot(p, n, pos) ->
       Pdot(module_path s p, n, pos)
@@ -92,7 +92,7 @@ let modtype_path s = function
       begin try
         match Tbl.find_same id s.modtypes with
           | Mty_ident p ->
-              specialize_path (Ident.side id) @@ (* ELIOM *)
+              specialize_path ~scope:(Ident.side id) @@ (* ELIOM *)
               p
           | _ -> fatal_error "Subst.modtype_path"
       with Not_found -> p end
@@ -104,7 +104,7 @@ let modtype_path s = function
 let type_path s = function
     Pident id as p ->
       begin try
-        specialize_path (Ident.side id) @@ (* ELIOM *)
+        specialize_path ~scope:(Ident.side id) @@ (* ELIOM *)
         Tbl.find_same id s.types with Not_found -> p end
   | Pdot(p, n, pos) ->
       Pdot(module_path s p, n, pos)
@@ -386,7 +386,7 @@ let rec modtype ?(renew=true) s = function
       begin match p with
         Pident id ->
           begin try
-            specialize_modtype (Ident.side id) @@ Tbl.find_same id s.modtypes
+            specialize_modtype ?idside:None @@ Tbl.find_same id s.modtypes
           with Not_found ->
             mty end
       | Pdot(p, n, pos) ->

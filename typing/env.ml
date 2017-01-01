@@ -170,6 +170,7 @@ module STbl = struct
   let find = Ident.find_name
   let find_ident = Ident.find_ident
   let find_same = Ident.find_same
+  let find_side s tbl = Ident.side (find_ident s tbl)
   let iter f = Ident.iter (fun i -> f @@ Ident.name i)
   let fold f =
     Ident.fold_all (fun i -> f @@ Ident.name i)
@@ -615,18 +616,39 @@ let rec find_module_descr path env =
           raise Not_found
       end
 
-let find proj1 proj2 specialize path env =
+(* ELIOM *)
+(* try to find the side of a module *)
+let rec find_module_side path env =
+  let open Eliom_base in
+  match path with
+    Pident id -> Some (Ident.side id)
+  | Pdot(p, s, pos) ->
+      begin try match get_components (find_module_descr p env) with
+          Structure_comps c ->
+            let id = STbl.find_ident s c.comp_modules in
+            Some (Ident.side id)
+        | Functor_comps f -> None
+      with _ -> None
+      end
+  | Papply(p1, p2) ->
+      begin match find_module_side p1 env, find_module_side p2 env with
+      | Some (Loc _ as s), _
+      | _, Some (Loc _ as s) -> Some s
+      | _, _  -> None (* need to look at the module type to know *)
+      end
+(* /ELIOM *)
+
+let find proj1 proj2 (specialize : ?idside:_ -> _) path env =
   match path with
     Pident id ->
       let (p, data) = EnvTbl.find_same id (proj1 env)
-      in specialize (Ident.side id) data
+      in specialize ?idside:(find_module_side p env) data
   | Pdot(p, s, pos) ->
       begin match get_components (find_module_descr p env) with
         Structure_comps c ->
           let tbl = proj2 c in
-          let id = STbl.find_ident s tbl in
           let (data, pos) = STbl.find s tbl in
-          specialize (Ident.side id) data
+          specialize ~idside:(STbl.find_side s tbl) data
       | Functor_comps f ->
           raise Not_found
       end
@@ -634,9 +656,9 @@ let find proj1 proj2 specialize path env =
       raise Not_found
 
 let find_value =
-  find (fun env -> env.values) (fun sc -> sc.comp_values) (fun _ x -> x)
+  find (fun env -> env.values) (fun sc -> sc.comp_values) (fun ?idside x -> x)
 and find_type_full =
-  find (fun env -> env.types) (fun sc -> sc.comp_types) (fun _ x -> x)
+  find (fun env -> env.types) (fun sc -> sc.comp_types) (fun ?idside x -> x)
 and find_modtype =
   find (fun env -> env.modtypes) (fun sc -> sc.comp_modtypes) ETS.modtype_declaration
 and find_class =
@@ -699,20 +721,19 @@ let find_module ~alias path env =
     Pident id ->
       begin try
         let (p, data) = EnvTbl.find_same id env.modules
-        in ETS.module_declaration (Ident.side id) data
+        in ETS.module_declaration ?idside:(find_module_side p env) data
       with Not_found ->
         if Ident.persistent id && not (Ident.name id = !current_unit) then
           let id, ps = find_pers_struct (Ident.name id) in
-          ETS.module_declaration (Ident.side id) @@
+          ETS.module_declaration ?idside:None @@
           md (Mty_signature(Lazy.force ps.ps_sig))
         else raise Not_found
       end
   | Pdot(p, s, pos) ->
       begin match get_components (find_module_descr p env) with
         Structure_comps c ->
-          let id = STbl.find_ident s c.comp_modules in
           let (data, pos) = STbl.find s c.comp_modules in
-          ETS.module_declaration (Ident.side id) @@
+          ETS.module_declaration ~idside:(STbl.find_side s c.comp_modules) @@
           md (EnvLazy.force subst_modtype_maker data)
       | Functor_comps f ->
           raise Not_found
@@ -721,7 +742,7 @@ let find_module ~alias path env =
       let desc1 = find_module_descr p1 env in
       begin match get_components desc1 with
         Functor_comps f ->
-          ETS.module_declaration Eliom_base.Poly @@
+          ETS.module_declaration ?idside:None @@
           md begin match f.fcomp_res with
           | Mty_alias p as mty-> mty
           | mty ->
@@ -870,7 +891,7 @@ let rec lookup_module_descr_aux ?loc lid env =
       let {md_type=mty2} = find_module p2 env in
       begin match get_components desc1 with
         Functor_comps f ->
-          let mty1 = Misc.may_map (ETS.modtype Eliom_base.Poly) f.fcomp_arg in
+          let mty1 = Misc.may_map (ETS.modtype ?idside:None) f.fcomp_arg in
           Misc.may (!check_modtype_inclusion env mty2 p2) mty1;
           (Papply(p1, p2), !components_of_functor_appl' f env p1 p2)
       | Structure_comps c ->
@@ -925,7 +946,7 @@ and lookup_module ~load ?loc lid env : Path.t =
       let p = Papply(p1, p2) in
       begin match get_components desc1 with
         Functor_comps f ->
-          let mty1 = Misc.may_map (ETS.modtype Eliom_base.Poly) f.fcomp_arg in
+          let mty1 = Misc.may_map (ETS.modtype ?idside:None) f.fcomp_arg in
           Misc.may (!check_modtype_inclusion env mty2 p2) mty1;
           p
       | Structure_comps c ->
@@ -937,21 +958,19 @@ let lookup_module ~load ?loc lid env =
   ETS.path @@ lookup_module ~load ?loc lid env
 (* /ELIOM *)
 
-let lookup proj1 proj2 specialize ?loc lid env =
+let lookup proj1 proj2 (specialize: ?idside:_ -> _) ?loc lid env =
   match lid with
     Lident s ->
       let tbl = proj1 env in
-      let id = Ident.find_ident s tbl in
       let (p, data) = EnvTbl.find_name s tbl in
-      (p, specialize (Ident.side id) data)
+      (p, specialize ~idside:(STbl.find_side s tbl) data)
   | Ldot(l, s) ->
       let (p, desc) = lookup_module_descr ?loc l env in
       begin match get_components desc with
         Structure_comps c ->
           let tbl = proj2 c in
           let (data, pos) = STbl.find s tbl in
-          let id = STbl.find_ident s tbl in
-          (Pdot(p, s, pos), specialize (Ident.side id) data)
+          (Pdot(p, s, pos), specialize ~idside:(STbl.find_side s tbl) data)
       | Functor_comps f ->
           raise Not_found
       end
@@ -1003,7 +1022,7 @@ let lbl_shadow lbl1 lbl2 = false
 
 
 let lookup_value =
-  lookup (fun env -> env.values) (fun sc -> sc.comp_values) (fun _ x -> x)
+  lookup (fun env -> env.values) (fun sc -> sc.comp_values) (fun ?idside x -> x)
 and lookup_all_constructors =
   lookup_all_simple (fun env -> env.constrs) (fun sc -> sc.comp_constrs)
     cstr_shadow
@@ -1011,7 +1030,7 @@ and lookup_all_labels =
   lookup_all_simple (fun env -> env.labels) (fun sc -> sc.comp_labels)
     lbl_shadow
 and lookup_type =
-  lookup (fun env -> env.types) (fun sc -> sc.comp_types) (fun _ x -> x)
+  lookup (fun env -> env.types) (fun sc -> sc.comp_types) (fun ?idside x -> x)
 and lookup_modtype =
   lookup (fun env -> env.modtypes) (fun sc -> sc.comp_modtypes) ETS.modtype_declaration
 and lookup_class =
@@ -1318,28 +1337,6 @@ let add_gadt_instance_chain env lv t =
   add_instance t
   (* Format.eprintf "@." *)
 
-(* ELIOM *)
-(* try to find the side of a module *)
-let rec find_module_side path env =
-  let open Eliom_base in
-  match path with
-    Pident id -> Some (Ident.side id)
-  | Pdot(p, s, pos) ->
-      begin try match get_components (find_module_descr p env) with
-          Structure_comps c ->
-            let id = STbl.find_ident s c.comp_modules in
-            Some (Ident.side id)
-        | Functor_comps f -> None
-      with _ -> None
-      end
-  | Papply(p1, p2) ->
-      begin match find_module_side p1 env, find_module_side p2 env with
-      | Some (Loc _ as s), _
-      | _, Some (Loc _ as s) -> Some s
-      | _, _  -> None (* need to look at the module type to know *)
-      end
-(* /ELIOM *)
-
 (* Expand manifest module type names at the top of the given module type *)
 
 let rec scrape_alias env ?path mty =
@@ -1360,14 +1357,11 @@ let rec scrape_alias env ?path mty =
       end
   | mty, Some path ->
       (* ELIOM *)
-      let side = match find_module_side path env with
-        | Some s -> s | None -> Eliom_base.Poly
-      in
-      let mty = ETS.modtype side mty in
+      let mty = ETS.modtype ?idside:(find_module_side path env) mty in
       (* /ELIOM *)
       !strengthen env mty path
   | _ ->
-      Eliom_types.Specialize.modtype Eliom_base.Poly @@ (*ELIOM*)
+      Eliom_types.Specialize.modtype ?idside:None @@ (*ELIOM*)
       mty
 
 let scrape_alias env mty = scrape_alias env mty
