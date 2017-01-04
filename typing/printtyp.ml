@@ -1601,3 +1601,19 @@ let report_ambiguous_type_error ppf env (tp0, tp0') tpl txt1 txt2 txt3 =
            @]"
           txt2 type_path_list tpl
           txt3 (type_path_expansion tp0) tp0')
+
+
+let module_declaration id ppf decl =
+  !Oprint.out_sig_item ppf (tree_of_module id decl.md_type Types.Trec_not)
+
+let () =
+  Eliom_types.printer_modtype := modtype
+
+let () =
+  Eliom_types.printer_modtype_decl := modtype_declaration
+
+let () =
+  Eliom_types.printer_module_decl := module_declaration
+
+let () =
+  Eliom_types.printer_path := path

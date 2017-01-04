@@ -2,6 +2,14 @@
 open Types
 open Btype
 
+
+let unset s ppf _ = Format.pp_print_string ppf ("unset: "^s)
+let printer_modtype = ref @@ unset "modtype"
+let printer_path = ref @@ unset "path"
+let printer_modtype_decl = ref (fun _id -> unset "modtype decl")
+let printer_module_decl = ref (fun _id -> unset "module decl")
+
+
 (** New magic number for eliom-specific interfaces. *)
 let cmi_magic_number = "Eliom000I020"
 let () = assert
@@ -235,19 +243,19 @@ module Specialize = struct
 
   let modtype ?idside x =
     specialization_with
-      ~printer:(!printer_modtype)
+      (* ~printer:(!printer_modtype) *)
       (fun o -> o#module_type)
       ?idside x
 
   let module_declaration ?idside x =
     specialization_with
-      ~printer:(!printer_module_decl (Ident.create_persistent "Foo"))
+      (* ~printer:(!printer_module_decl (Ident.create_persistent "Foo")) *)
       (fun o -> o#module_declaration)
       ?idside x
 
   let modtype_declaration ?idside x =
     specialization_with
-      ~printer:(!printer_modtype_decl (Ident.create_persistent "Foo"))
+      (* ~printer:(!printer_modtype_decl (Ident.create_persistent "Foo")) *)
       (fun o -> o#modtype_declaration)
       ?idside x
 

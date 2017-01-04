@@ -63,6 +63,7 @@ val tree_of_modtype_declaration:
 val tree_of_signature: Types.signature -> out_sig_item list
 val tree_of_typexp: bool -> type_expr -> out_type
 val modtype_declaration: Ident.t -> formatter -> modtype_declaration -> unit
+val module_declaration: Ident.t -> formatter -> module_declaration -> unit
 val class_type: formatter -> class_type -> unit
 val tree_of_class_declaration:
     Ident.t -> class_declaration -> rec_status -> out_sig_item

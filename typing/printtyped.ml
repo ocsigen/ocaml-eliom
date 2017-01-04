@@ -402,6 +402,8 @@ and type_declaration i ppf x =
   line i ppf "ptype_private = %a\n" fmt_private_flag x.typ_private;
   line i ppf "ptype_manifest =\n";
   option (i+1) core_type ppf x.typ_manifest;
+  line i ppf "decl_attributes =\n";
+  attributes (i+1) ppf x.typ_type.Types.type_attributes;
 
 and type_kind i ppf x =
   match x with

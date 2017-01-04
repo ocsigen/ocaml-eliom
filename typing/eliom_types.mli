@@ -22,3 +22,7 @@ module Specialize : sig
   val path : Path.t -> Path.t
 end
 
+val printer_path : (Format.formatter -> Path.t -> unit) ref
+val printer_modtype : (Format.formatter -> Types.module_type -> unit) ref
+val printer_modtype_decl : (Ident.t -> Format.formatter -> Types.modtype_declaration -> unit) ref
+val printer_module_decl : (Ident.t -> Format.formatter -> Types.module_declaration -> unit) ref
