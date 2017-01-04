@@ -22,6 +22,10 @@ let ppf = Format.err_formatter
 
 type file_kind = ML | MLI;;
 
+(* ELIOM *)
+let () = Eliom_base.(set_mode Eliom)
+(* /ELIOM *)
+
 let load_path = ref ([] : (string * string array) list)
 let ml_synonyms = ref [".ml"; ".eliom"]
 let mli_synonyms = ref [".mli"; ".eliomi"]
