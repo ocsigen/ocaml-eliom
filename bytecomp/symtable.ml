@@ -61,12 +61,12 @@ let is_global_defined id =
 
 let slot_for_getglobal id =
   try
-    find_numtable !global_table id
+    find_numtable !global_table (Ident.with_side Eliom_base.Poly id)
   with Not_found ->
     raise(Error(Undefined_global(Ident.name id)))
 
 let slot_for_setglobal id =
-  enter_numtable global_table id
+  enter_numtable global_table (Ident.with_side Eliom_base.Poly id)
 
 let slot_for_literal cst =
   let n = incr_numtable global_table in
